@@ -36,7 +36,7 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 
 ### Phase 2: MVP 챗봇 조립
 
-부품을 연결해서 "유저가 채팅 → API Lambda → DDB 저장 → Bedrock 호출 → 응답" 흐름을 한 줄로 잇는다. 이 시점부터 포트폴리오에 "AWS 서버리스 챗봇 만들어봤습니다" 어필 가능.
+부품을 연결해서 "유저가 채팅 → API Lambda → DDB 저장 → Bedrock 호출 → 응답" 흐름을 한 줄로 잇는다.
 
 - [ ] **Day 5**: Lambda + DDB + Bedrock 통합 (서버 측 챗봇 API)
 - [ ] **Day 6**: API Gateway 연동 — HTTP 엔드포인트 노출
@@ -47,15 +47,13 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 
 ### Phase 3: 원본 고급 패턴 차용
 
-원본 레퍼런스의 진짜 멋진 부분. 막히면 원본 코드 *참고*하되, 베끼지 말고 이해한 뒤 직접 짠다.
-
 - [ ] **Day 11**: API Lambda / Worker Lambda 분리 (async invocation)
 - [ ] **Day 12**: Agent Loop — LLM tool calling 구현
 - [ ] **Day 13**: IoT Core MQTT로 실시간 스트리밍 응답
 - [ ] **Day 14**: SigV4-signed WebSocket 인증
 - [ ] **Day 15**: Lambda@Edge로 엣지 라우팅 (us-east-1 제약 확인)
 - [ ] **Day 16**: Skill 추가 — Telegram 또는 Notion 등 외부 통합
-- [ ] **Day 17+**: 회고, 비용 분석, 보안 강화, 포트폴리오 정리
+- [ ] **Day 17+**: 회고, 비용 분석, 보안 강화
 
 ---
 
