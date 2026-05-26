@@ -11,7 +11,7 @@
 ## 📝 진행 상황
 - [x] Day 1: AWS 계정 + IAM 유저 + CLI 세팅
 - [x] Day 2: Bedrock 모델 액세스 + Claude API 호출 → [`day-02-bedrock/`](./day-02-bedrock/)
-- [ ] Day 3: Lambda Hello World 배포
+- [x] Day 3: Lambda Hello World 배포 (CDK) → [`day-03-lambda-hello/`](./day-03-lambda-hello/)
 - [ ] Day 4: DynamoDB CRUD
 - [ ] Day 5: Lambda + DDB + Bedrock 통합
 - [ ] Day 6-7: 회고 + 정리
