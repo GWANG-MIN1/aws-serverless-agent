@@ -1,0 +1,13 @@
+*.js
+!jest.config.js
+*.d.ts
+node_modules
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+
+# 로컬 테스트 아티팩트 (aws lambda invoke 결과/페이로드)
+payload.json
+out.json
+ddb-keys.json
