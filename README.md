@@ -38,7 +38,7 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 
 부품을 연결해서 "유저가 채팅 → API Lambda → DDB 저장 → Bedrock 호출 → 응답" 흐름을 한 줄로 잇는다.
 
-- [ ] **Day 5**: Lambda + DDB + Bedrock 통합 (서버 측 챗봇 API)
+- [x] **Day 5**: Lambda + DDB + Bedrock 통합 (서버 측 챗봇 API) → [`day-05-chat-mvp/`](./day-05-chat-mvp/)
 - [ ] **Day 6**: API Gateway 연동 — HTTP 엔드포인트 노출
 - [ ] **Day 7**: 대화 히스토리 저장/조회 + 멀티턴 컨텍스트
 - [ ] **Day 8**: 최소 React 프론트 (Vite) + S3 정적 호스팅
@@ -74,8 +74,8 @@ aws-serverless-agent/
 ├── day-02-bedrock/        # Phase 1
 ├── day-03-lambda-hello/   # Phase 1
 ├── day-04-dynamodb/       # Phase 1
-├── day-05-.../            # Phase 2 (예정)
-└── ...
+├── day-05-chat-mvp/       # Phase 2 — Lambda + DDB + Bedrock 통합 ✅
+└── ...                    # Phase 2 진행 중 (Day 6+)
 ```
 
 각 `day-XX-*/` 폴더는 독립 실행 가능한 CDK 프로젝트이며, 그날 배운 내용을 별도 README로 정리해둠.

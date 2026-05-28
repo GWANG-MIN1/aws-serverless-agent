@@ -152,7 +152,9 @@ cat out.json
 
 ![2턴 결과 + 3턴 시작](images/02-turn-result.png)
 
-> 3턴 응답은 "저는 당신의 이름을 모릅니다" — 세션이 PK 로 격리되어 다른 sessionId 의 이력을 못 보는 것 = **정상**.
+3턴 응답: `"저는 당신의 이름을 모릅니다..."` + `historyCount:0` — 다른 sessionId 라 이력 Query 가 빈 결과 → Bedrock 에게도 어떤 컨텍스트도 안 넘어감. **세션이 PK 로 격리되는 것이 그대로 동작**.
+
+![3턴 격리 응답](images/04-isolation.png)
 
 **3) DDB Items — 영속화 확인**
 - `sess-001` 의 user/assistant 메시지가 `ts` 시간순으로 저장됨
