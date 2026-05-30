@@ -206,7 +206,7 @@ $ curl -s "${URL}health"
 {"ok":true,"day":7}
 ```
 
-**2) POST /chat (turn 1, streaming + 타이밍)**
+**2) POST /chat (turn 1, streaming + 타이밍)** — *(아래 스샷에 1)~3) 까지 한 컷에)*
 ```
 $ curl --no-buffer -N -X POST "${URL}chat" -d '{"sessionId":"sess-007","message":"긴 문장으로 자기소개 부탁해"}'
 # 자기소개
@@ -223,6 +223,8 @@ $ curl -s --no-buffer -N -X POST "${URL}chat" -d '{"sessionId":"sess-007","messa
 --- first-byte: 1.767s | total: 2.282s ---
 ```
 → **이전 turn 1 의 자기소개를 정확히 한 줄로 요약**. `ScanIndexForward:false` + reverse 로 짠 컨텍스트 사이클이 정상. (모델이 자기를 "OpenAI"라고 hallucinate 한 건 모델 이슈, 파이프라인엔 무관.)
+
+![health + streaming POST turn1/turn2 한 컷 (first-byte ~2s)](images/01-health-streaming.png)
 
 **4) GET /sessions/sess-007/messages — 히스토리 전체**
 ```json
@@ -252,6 +254,10 @@ $ curl -s --no-buffer -N -X POST "${URL}chat" -d '{"sessionId":"sess-007","messa
 ```
 → `sk` 에 `${ISO}#${uuid}` 합성 키 정확히 박힘, 시간순(과거→최신) 정렬, `inputTokens`/`outputTokens` 같이 반환. count=4 < limit=10 이라 `nextBefore:null`.
 
+> 참고: 아래 스샷은 같은 sessionId 로 추가 호출까지 누적한 시점이라 **count: 8** 로 잡힘 — `${ts}#${uuid}` 합성 SK 덕에 같은 sessionId 의 새 메시지가 덮어쓰기 없이 별개 row 로 박힌다는 게 시각적으로 확인됨.
+
+![GET /sessions/sess-007/messages?limit=10 — 누적 8개, SK 합성 확인](images/02-history-get.png)
+
 **5) GET ?limit=2 — 페이지네이션 cursor 확인**
 ```json
 {
@@ -268,6 +274,8 @@ $ curl -s --no-buffer -N -X POST "${URL}chat" -d '{"sessionId":"sess-007","messa
 {"sessionId":"sess-999","count":0,"messages":[],"nextBefore":null}
 ```
 → PK 단위로 깔끔히 격리.
+
+![limit=2 + sess-999 격리 한 컷 (nextBefore 채워짐 / sess-999 empty)](images/03-pagination-isolation.png)
 
 **검증 통과 요약**:
 - Hono `streamHandle` 이 같은 Lambda 에서 streaming POST + JSON GET 둘 다 처리 ✓
