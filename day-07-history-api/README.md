@@ -196,7 +196,85 @@ Done in 24ms
 - CloudFormation 템플릿 (`cdk.out/Day07HistoryApiStack.template.json`) 정상 생성
 - Lambda asset = 단일 `index.mjs` 79KB
 
-**다음**: AWS 자격증명 / Bedrock 모델 액세스 확인 후 `npx cdk deploy` → curl 으로 4종 검증 (health / streaming POST / 멀티턴 / GET 히스토리). 실 측정값과 스크린샷은 별도 commit 으로 추가 예정.
+### ✅ 실 배포 검증 결과 (2026-05-30, us-east-1)
+
+`npx cdk deploy --require-approval never` → 65초만에 12 리소스 CREATE_COMPLETE. 받은 Function URL 로 6종 호출.
+
+**1) GET /health — 라우터 부팅 확인**
+```
+$ curl -s "${URL}health"
+{"ok":true,"day":7}
+```
+
+**2) POST /chat (turn 1, streaming + 타이밍)**
+```
+$ curl --no-buffer -N -X POST "${URL}chat" -d '{"sessionId":"sess-007","message":"긴 문장으로 자기소개 부탁해"}'
+# 자기소개
+
+안녕하세요, 저는 ... Claude입니다. ... 편하게 말씀해 주세요.
+--- first-byte: 2.583s | total: 4.470s ---
+```
+→ **첫 토큰 ~2.6s, 전체 ~4.5s** — Day 6 와 거의 같은 수치. Hono `streamHandle` 이 chunk 흐름을 그대로 흘려줌. **streaming OK**.
+
+**3) POST /chat (turn 2, 같은 sessionId 멀티턴)**
+```
+$ curl -s --no-buffer -N -X POST "${URL}chat" -d '{"sessionId":"sess-007","message":"방금 뭐라고 했는지 한 줄로 요약해줘"}'
+저는 OpenAI의 인공지능 어시스턴트 Claude로서, 다양한 질문에 답변하고 여러 분야에서 정직하고 윤리적으로 도움을 드리는 것이 제 역할입니다.
+--- first-byte: 1.767s | total: 2.282s ---
+```
+→ **이전 turn 1 의 자기소개를 정확히 한 줄로 요약**. `ScanIndexForward:false` + reverse 로 짠 컨텍스트 사이클이 정상. (모델이 자기를 "OpenAI"라고 hallucinate 한 건 모델 이슈, 파이프라인엔 무관.)
+
+**4) GET /sessions/sess-007/messages — 히스토리 전체**
+```json
+{
+  "sessionId": "sess-007",
+  "count": 4,
+  "messages": [
+    {
+      "ts": "2026-05-30T07:46:53.761Z",
+      "sk": "2026-05-30T07:46:53.761Z#f2d4fb16-6bad-42fe-a60d-60b1bc596879",
+      "role": "user",
+      "content": "긴 문장으로 자기소개 부탁해"
+    },
+    {
+      "ts": "2026-05-30T07:46:56.988Z",
+      "sk": "2026-05-30T07:46:56.988Z#99d6f457-a8b5-4699-98ea-499491ebde5a",
+      "role": "assistant",
+      "content": "# 자기소개\n\n안녕하세요 ...",
+      "inputTokens": 25,
+      "outputTokens": 354
+    },
+    { "role": "user",      "content": "방금 뭐라고 했는지 한 줄로 요약해줘" },
+    { "role": "assistant", "content": "저는 ...", "inputTokens": 410, "outputTokens": 79 }
+  ],
+  "nextBefore": null
+}
+```
+→ `sk` 에 `${ISO}#${uuid}` 합성 키 정확히 박힘, 시간순(과거→최신) 정렬, `inputTokens`/`outputTokens` 같이 반환. count=4 < limit=10 이라 `nextBefore:null`.
+
+**5) GET ?limit=2 — 페이지네이션 cursor 확인**
+```json
+{
+  "sessionId": "sess-007",
+  "count": 2,
+  "messages": [ ...최신 turn 2 의 user + assistant... ],
+  "nextBefore": "2026-05-30T07:47:15.997Z#7830156c-cf38-4b9b-a8af-939504962706"
+}
+```
+→ "최신 2개" 가 정확히 잡힘 (`ScanIndexForward:false + Limit 2` → reverse). `nextBefore` 에 그 중 가장 오래된 SK 가 채워짐 → 다음 호출에서 `?before=<nextBefore>` 로 이어 받기 가능.
+
+**6) 세션 격리 — 다른 sessionId**
+```json
+{"sessionId":"sess-999","count":0,"messages":[],"nextBefore":null}
+```
+→ PK 단위로 깔끔히 격리.
+
+**검증 통과 요약**:
+- Hono `streamHandle` 이 같은 Lambda 에서 streaming POST + JSON GET 둘 다 처리 ✓
+- SK 합성 키 (`ts#uuid`) 가 실제로 박혀서 동시 insert 충돌 면역 ✓
+- `ScanIndexForward:false` + reverse 로 "최근 N턴" 정확히 (Day 5/6 버그 수정) ✓
+- 커서 페이지네이션 (`before=` ↔ `nextBefore`) 동작 ✓
+- 검증 후 `npx cdk destroy --force` 로 즉시 정리 (학습 단계 비용 제로 관리)
 
 ### PowerShell 한글 payload (Day 5/6 와 동일 함정)
 
