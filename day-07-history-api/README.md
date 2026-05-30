@@ -177,6 +177,27 @@ curl -s "${URL}sessions/sess-007/messages?limit=10" | jq
 
 `nextBefore` 가 `null` 이 아니면 다음 페이지 있음 → `?before=<nextBefore>` 로 호출.
 
+### ✅ 로컬 검증 결과 (2026-05-30)
+
+실 배포 전 `npm install` + `npx cdk synth` 만 돌려서 코드/스택 정합성 확인:
+
+```
+$ npm install
+added 81 packages, and audited 119 packages in 1m
+
+$ npx cdk synth
+Bundling asset Day07HistoryApiStack/ChatFunction/Code/Stage...
+  ...building/index.mjs  77.1kb
+Done in 24ms
+77 feature flags are not configured. Run 'cdk flags --unstable=flags' to learn more.
+```
+
+- **esbuild 번들 = 77.1KB** — hono 만 inline, aws-sdk 류는 `externalModules` 로 빠짐 → 의도대로
+- CloudFormation 템플릿 (`cdk.out/Day07HistoryApiStack.template.json`) 정상 생성
+- Lambda asset = 단일 `index.mjs` 79KB
+
+**다음**: AWS 자격증명 / Bedrock 모델 액세스 확인 후 `npx cdk deploy` → curl 으로 4종 검증 (health / streaming POST / 멀티턴 / GET 히스토리). 실 측정값과 스크린샷은 별도 commit 으로 추가 예정.
+
 ### PowerShell 한글 payload (Day 5/6 와 동일 함정)
 
 ```powershell
