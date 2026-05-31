@@ -1,0 +1,21 @@
+*.js
+!jest.config.js
+*.d.ts
+# Vite 앱 안의 d.ts 는 트래킹 (vite-env.d.ts 등 타입 선언)
+!web/**/*.d.ts
+node_modules
+
+# CDK asset staging
+.cdk.staging
+cdk.out
+
+# Vite 빌드 출력 — BucketDeployment 가 직접 읽으므로 git 에는 안 들어감
+web/dist
+
+# 환경변수 / 시크릿
+.env
+.env.*
+!.env.sample
+*.pem
+*.key
+*-credentials.json
