@@ -1,9 +1,11 @@
 *.js
 !jest.config.js
 *.d.ts
-# Vite 앱 안의 d.ts 는 트래킹 (vite-env.d.ts 등 타입 선언)
-!web/**/*.d.ts
+# Vite 앱의 src/ 안 타입 선언 (vite-env.d.ts) 만 트래킹.
+# web/vite.config.d.ts 같은 `tsc -b` 산출물은 제외.
+!web/src/**/*.d.ts
 node_modules
+*.tsbuildinfo
 
 # CDK asset staging
 .cdk.staging
@@ -19,3 +21,9 @@ web/dist
 *.pem
 *.key
 *-credentials.json
+
+# 로컬 테스트 아티팩트 (curl payload / 출력) — Day 7 패턴과 동일
+payload.json
+payload*.json
+check*.json
+out.json
