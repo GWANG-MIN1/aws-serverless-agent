@@ -38,6 +38,18 @@ const MODEL_ID = process.env.MODEL_ID;
 const HISTORY_LIMIT = parseInt(process.env.HISTORY_LIMIT ?? "20", 10);
 const MESSAGE_MAX = 4096;
 
+// 자기 정체성 anchor — system prompt 가 비어 있으면 모델이 "OpenAI 의 Claude" 같은
+// 모순 응답을 confabulate 함. 학습 데이터 분포상 "AI 자기소개" 토큰 시퀀스의
+// 회사 슬롯에 ChatGPT/OpenAI 가 강한 prior 로 잡혀 있기 때문.
+// → system 한 줄로 회사 슬롯을 Anthropic 으로 고정.
+//
+// 주의: 부정형("X 가 만들지 않았다") 을 넣으면 모델이 응답에 그대로 노출시켜
+//       "저는 Anthropic 이 만든 Claude 이며 OpenAI, Google 이 만들지 않았다" 같은 누출 발생.
+//       → 긍정형만으로 짧게.
+const SYSTEM_PROMPT =
+  "You are Claude, an AI assistant created by Anthropic. " +
+  "When asked about yourself, identify as Claude made by Anthropic.";
+
 // SK 합성: `${ISO}#${uuid}`
 //   - 정렬은 ISO 가 앞에 있어 시간순 그대로
 //   - 같은 ms 에 두 insert 가 들어와도 uuid 가 달라 키 충돌/덮어쓰기 없음
@@ -113,6 +125,8 @@ app.post("/chat", async (c) => {
 
       const bedrockRes = await bedrock.send(new ConverseStreamCommand({
         modelId: MODEL_ID,
+        // system prompt: 모델 자기정체성 anchoring — 없으면 "OpenAI의 Claude" 환각이 stochastic 하게 뜸.
+        system: [{ text: SYSTEM_PROMPT }],
         messages,
         inferenceConfig: { maxTokens: 1024, temperature: 0.7 },
       }));
