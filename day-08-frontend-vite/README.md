@@ -154,6 +154,137 @@ npm run dev
 
 CORS 가 `*` 라 localhost 에서도 그대로 호출됨.
 
+### ✅ 로컬 검증 결과 (2026-05-31)
+
+실 배포 전 빌드 / 합성만 돌려 코드·스택 정합성 확인:
+
+```
+$ npm --prefix web run build
+> tsc -b && vite build
+vite v5.4.21 building for production...
+✓ 32 modules transformed.
+dist/index.html                   0.41 kB │ gzip:  0.29 kB
+dist/assets/index-B3ToM78D.css    2.18 kB │ gzip:  0.85 kB
+dist/assets/index-Bc5eGZBX.js   145.74 kB │ gzip: 47.30 kB
+✓ built in 2.25s
+
+$ npx cdk synth
+... AWS::S3::Bucket + Custom::CDKBucketDeployment ... 정상
+77 feature flags are not configured. (학습 단계 무시)
+```
+
+- **Vite 번들 145KB / gzip 47KB** — react + react-dom + 챗 UI 코드까지 한 파일. CloudFront 로 묶지 않아도 첫 페인트 부담 없음.
+- CDK 템플릿이 S3 Bucket + BucketDeployment custom resource + S3AutoDeleteObjects custom resource 까지 정상 합성.
+
+### ✅ 실 배포 검증 결과 (2026-05-31, us-east-1)
+
+`npm run deploy` 한 줄로 **web 빌드 → S3 업로드 → CFN 변경** 까지 한 번에. 13 리소스 CREATE_COMPLETE / ~104s.
+
+```
+Day08FrontendViteStack.BucketWebsiteUrl =
+  http://day08frontendvitestack-webbucket12880f5b-ywbpf3p844la.s3-website-us-east-1.amazonaws.com
+```
+
+**1) 정적 호스팅 — index.html 가 public 으로 응답**
+```powershell
+PS> curl.exe -s -o NUL -w "HTTP %{http_code} | %{content_type} | %{size_download} bytes`n" "$WEB/"
+HTTP 200 | text/html | 416 bytes
+```
+→ BlockPublicAccess BLOCK_ACLS + objectOwnership BUCKET_OWNER_ENFORCED 조합이 의도대로 동작. 403 한 번도 안 남.
+
+**2) Vite 가 빌드한 결과물 — script/link 태그**
+```powershell
+PS> curl.exe -s "$WEB/" | Select-String -Pattern 'script|link'
+    <script type="module" crossorigin src="/assets/index-Bc5eGZBX.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-B3ToM78D.css">
+```
+
+**3) Vite env 가 빌드 타임에 박힘 — JS 번들 안에 Function URL 문자열**
+```powershell
+PS> $JS = (Select-String -InputObject (curl.exe -s "$WEB/") -Pattern 'assets/[^"]+\.js').Matches.Value
+PS> curl.exe -s "$WEB/$JS" | Select-String -Pattern 'https://[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws/'
+... const Kl="https://uy3cmeapqzi7fvpfkptmz3bc2q0yelmf.lambda-url.us-east-1.on.aws/".trim() ...
+```
+→ `VITE_FUNCTION_URL` 이 그대로 substitute. 브라우저는 별도 config fetch 없이 fetch 호출 가능. 런타임 교체 불가는 의도된 트레이드오프.
+
+**4) 백엔드 헬스**
+```powershell
+PS> curl.exe -s "${API}health"
+{"ok":true,"day":7}
+```
+
+**5) PowerShell 한글 payload 함정** — `[System.IO.File]::WriteAllBytes("rel", ...)` 는 .NET cwd 기준이라 PS cwd 와 다를 수 있다. 절대경로 + cwd 동기화 필요:
+```powershell
+PS> [System.IO.Directory]::SetCurrentDirectory((Get-Location).Path)
+PS> $enc = [System.Text.UTF8Encoding]::new($false)
+PS> $p1 = Join-Path (Get-Location) 'payload1.json'
+PS> [System.IO.File]::WriteAllBytes($p1, $enc.GetBytes($body1))
+PS> Test-Path $p1
+True
+```
+
+**6) POST /chat turn 1 — 스트리밍 + 타이밍**
+```powershell
+PS> curl.exe --no-buffer -N -X POST "${API}chat" -H "content-type: application/json" `
+       --data-binary "@payload1.json" -w "`n--- first-byte: %{time_starttransfer}s | total: %{time_total}s ---`n"
+# 자기소개
+
+[자기소개 한 단락 — Bedrock 응답 본문은 모델 변덕이라 생략]
+--- first-byte: 2.211s | total: 3.991s ---
+```
+→ **첫 토큰 ~2.2s, 전체 ~4s** — Hono `streamHandle` 이 chunk 흐름을 그대로 흘려줌. 같은 URL 을 브라우저 `fetch().body.getReader()` 로 받으면 UI 도 동일하게 동작.
+
+**7) POST /chat turn 2** — 별도 캡처 없이 GET 결과(아래)에서 `방금 뭐라 했어 한 줄로` + assistant 응답이 들어와 있는 것으로 간접 확인.
+
+**8) GET /sessions/sess-day08/messages — 히스토리 + SK 합성 + 토큰 카운트**
+```powershell
+PS> curl.exe -s "${API}sessions/$SID/messages?limit=10"
+{"sessionId":"sess-day08","count":4,"messages":[
+  { "ts":"2026-05-31T08:48:41.979Z",
+    "sk":"2026-05-31T08:48:41.979Z#f7697268-333b-4319-8a14-b7570863b83e",
+    "role":"user", "content":"긴 문장으로 자기소개 해줘" },
+  { "ts":"2026-05-31T08:48:45.008Z",
+    "sk":"2026-05-31T08:48:45.008Z#f59e8e6c-353c-4b1e-9f6b-baa53ae56758",
+    "role":"assistant", "content":"# 자기소개\n\n[turn 1 응답 본문 생략]",
+    "inputTokens":24, "outputTokens":284 },
+  { "role":"user", "content":"방금 뭐라 했어 한 줄로" },
+  { "role":"assistant", "content":"[turn 2 응답 본문 생략]",
+    "inputTokens":329, "outputTokens":75 }
+],"nextBefore":null}
+```
+→ `${ts}#${uuid}` 합성 SK 정확히 박힘, 시간순 정렬, 토큰 카운트 동봉. count=4 < limit=10 이라 `nextBefore:null`.
+
+**9) 세션 격리 — 다른 sessionId 는 빈 응답**
+```powershell
+PS> curl.exe -s "${API}sessions/sess-day08-other/messages"
+{"sessionId":"sess-day08-other","count":0,"messages":[],"nextBefore":null}
+```
+→ PK 단위 격리. UI 에서 `new` 버튼으로 새 sessionId 만들면 같은 흐름.
+
+**검증 통과 요약**:
+- S3 website endpoint 가 BlockPublicAccess 풀린 채로 정상 응답 ✓
+- Vite 빌드 타임 env substitution 으로 Function URL 박힘 ✓
+- BucketDeployment 가 web/dist 를 그대로 업로드 + Object 권한 정상 ✓
+- 백엔드 멀티턴/히스토리/세션격리 흐름 (Day 7) 살아있음 — 프론트가 부를 시나리오 선검증 ✓
+
+### ✅ 브라우저 UI 동작 — 스크린샷 3종
+
+위 PowerShell curl 이 백엔드 흐름의 정합성을 보장한다면, 다음 세 컷은 그 흐름이 **브라우저 UI 에서도 동일하게 재현**된다는 시각적 증거.
+
+![1턴 채팅 스트리밍 도착 — user 말풍선 + assistant 토큰 chunk 누적](images/01-chat-streaming.png)
+
+**01 — 채팅 1턴 스트리밍 도착.** 입력 → send 직후 assistant 말풍선이 빈 placeholder 로 뜨고, `fetch().body.getReader()` 가 chunk 를 받을 때마다 setState 누적 → 토큰 단위로 채워진다. curl 의 `first-byte ~2.2s / total ~4s` 와 동일한 체감.
+
+![새로고침 후 히스토리 GET 복원 — 같은 sessionId 의 대화 그대로 재현](images/02-history-reload.png)
+
+**02 — 새로고침 후 히스토리 복원.** F5 / Ctrl+R 로 페이지를 갈아끼우면 React state 는 다 날아가지만, sessionId 가 localStorage 에 남아 있어 `useEffect` 가 `GET /sessions/:id/messages` 호출 → 같은 대화가 다시 떠오른다. 이게 `ScanIndexForward:false + reverse` 조합이 브라우저까지 통해 살아있는 증거.
+
+![new 버튼 → 새 sessionId 빈 채팅](images/03-new-session.png)
+
+**03 — new 버튼으로 새 세션.** 우상단 `[new]` → `sess-XXXXXX` 새로 발급 + localStorage 갱신 + 채팅창 비워짐. PK 단위 격리(위 9)) 의 UI 판 — Day 7 의 `sess-day08-other → count:0` 와 같은 의미.
+
+> 정리: 학습 단계 비용 0 유지 — Day 7 + Day 8 둘 다 `npx cdk destroy --force` 로 즉시 정리한다.
+
 ## 🐛 막힐 만한 곳
 
 ### 브라우저에서 403 Forbidden — index.html 가 안 뜸
