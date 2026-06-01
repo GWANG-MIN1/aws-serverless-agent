@@ -1,0 +1,11 @@
+node_modules
+cdk.out
+*.d.ts
+!bin/*.d.ts
+*.js
+!web/vite.config.js
+*.tsbuildinfo
+.env
+.env.local
+web/dist
+web/node_modules
