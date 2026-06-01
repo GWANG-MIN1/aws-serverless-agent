@@ -47,13 +47,15 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 
 ### Phase 3: 원본 고급 패턴 차용
 
-- [ ] **Day 11**: API Lambda / Worker Lambda 분리 (async invocation)
-- [ ] **Day 12**: Agent Loop — LLM tool calling 구현
-- [ ] **Day 13**: IoT Core MQTT로 실시간 스트리밍 응답
-- [ ] **Day 14**: SigV4-signed WebSocket 인증
-- [ ] **Day 15**: Lambda@Edge로 엣지 라우팅 (us-east-1 제약 확인)
-- [ ] **Day 16**: Skill 추가 — Telegram 또는 Notion 등 외부 통합
-- [ ] **Day 17+**: 회고, 비용 분석, 보안 강화
+> 2026-06-01 정합성 점검 — 원본 [breath103/serverless-agent](https://github.com/breath103/serverless-agent) 실구성 (`packages/{backend,frontend,edge,shared}`, DDB 멀티 테이블, IoT Core MQTT, Lambda@Edge + SSM) 에 맞춰 플랜 재정렬. SQS/EventBridge/Cognito/API GW 는 원본 미사용이라 제외.
+
+- [ ] **Day 11**: API ↔ Worker Lambda 분리 — `InvocationType: Event` async invoke (SQS 없이 원본 패턴 그대로)
+- [ ] **Day 12**: DynamoDB 멀티 테이블 분리 — Day 7 의 `ConversationsTable` 1개 → users / sessions / messages 최소 3개로 (원본은 7개)
+- [ ] **Day 13**: Agent Loop + `executeCode` 단일 도구 — Bedrock toolUse/toolResult 흐름, 간소화 TS sandbox 실행
+- [ ] **Day 14**: IoT Core MQTT — Worker 가 `sessions/${id}/events` 토픽에 publish
+- [ ] **Day 15**: 브라우저 ↔ MQTT WSS 직접 subscribe — mqtt.js v5 + SigV4 쿼리스트링 서명
+- [ ] **Day 16**: Lambda@Edge 로 Day 9 CF Function 업그레이드 — `/api/*` 라우팅 + **SSM Parameter Store 로 backend Function URL 캐싱** (cold start 마다 deploy-time 값 조회의 정공법)
+- [ ] **Day 17+**: 회고 + 비용 / 보안 강화 (Telegram skill 등 외부 통합은 옵션 — 원본도 로컬 dev 전용)
 
 ---
 
@@ -78,12 +80,10 @@ aws-serverless-agent/
 ├── day-06-function-url/   # Phase 2 — Function URL + Bedrock streaming ✅
 ├── day-07-history-api/    # Phase 2 — Hono 멀티 라우트 + 히스토리 GET ✅
 ├── day-08-frontend-vite/  # Phase 2 — Vite React + S3 정적 호스팅 ✅
-├── day-09-cloudfront/     # Phase 2 — CloudFront(S3 OAC + /api/* FunctionUrl) ✅
-├── day-10-phase2-retro/   # Phase 2 회고 — Day 5~9 진화/패턴/비용/Phase 3 플랜 ✅
-└── ...                    # Phase 3 진입 (Day 11+)
+└── ...
 ```
 
-각 `day-XX-*/` 폴더는 독립 실행 가능한 CDK 프로젝트이며, 그날 배운 내용을 별도 README로 정리해둠.
+각 `day-XX-*/` 폴더는 독립 실행 가능한 CDK 프로젝트이며, 그날 배운 내용을 별도 README로 정리해둠. Day 9 이후 폴더는 위 "진행 상황" 섹션의 링크에서.
 
 ## ⚠️ 비용 관리
 
