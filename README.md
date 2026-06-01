@@ -43,7 +43,7 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 - [x] **Day 7**: Hono 멀티 라우트 + 히스토리 조회 API (SK 합성, `ScanIndexForward:false`) → [`day-07-history-api/`](./day-07-history-api/)
 - [x] **Day 8**: 최소 React 프론트 (Vite) + S3 정적 호스팅 (BlockPublicAccess BLOCK_ACLS, BucketDeployment) → [`day-08-frontend-vite/`](./day-08-frontend-vite/)
 - [x] **Day 9**: CloudFront 로 프론트 + API 통합 (S3 private/OAC + `/api/*` → Function URL + CF Function URL rewrite) → [`day-09-cloudfront/`](./day-09-cloudfront/)
-- [ ] **Day 10**: Phase 2 회고 + 비용/구조 정리
+- [x] **Day 10**: Phase 2 회고 — Day 5~9 진화, 누적 트러블슈팅 12종, 실비용 ~$0.07, Phase 3 day-by-day 플랜 → [`day-10-phase2-retro/`](./day-10-phase2-retro/)
 
 ### Phase 3: 원본 고급 패턴 차용
 
@@ -79,7 +79,8 @@ aws-serverless-agent/
 ├── day-07-history-api/    # Phase 2 — Hono 멀티 라우트 + 히스토리 GET ✅
 ├── day-08-frontend-vite/  # Phase 2 — Vite React + S3 정적 호스팅 ✅
 ├── day-09-cloudfront/     # Phase 2 — CloudFront(S3 OAC + /api/* FunctionUrl) ✅
-└── ...                    # Phase 2 진행 중 (Day 10+)
+├── day-10-phase2-retro/   # Phase 2 회고 — Day 5~9 진화/패턴/비용/Phase 3 플랜 ✅
+└── ...                    # Phase 3 진입 (Day 11+)
 ```
 
 각 `day-XX-*/` 폴더는 독립 실행 가능한 CDK 프로젝트이며, 그날 배운 내용을 별도 README로 정리해둠.
