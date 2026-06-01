@@ -2,8 +2,8 @@ node_modules
 cdk.out
 *.d.ts
 !bin/*.d.ts
+!web/src/*.d.ts
 *.js
-!web/vite.config.js
 *.tsbuildinfo
 .env
 .env.local
