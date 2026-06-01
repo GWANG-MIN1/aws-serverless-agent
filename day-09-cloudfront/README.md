@@ -316,6 +316,22 @@ HTTP 200 | content-type text/html | <!doctype html>...
 
 > 정리: Day 9 + Day 7 둘 다 `npx cdk destroy --force` 로 즉시 정리. CloudFront destroy 도 propagation 으로 ~5분.
 
+### ✅ 브라우저 UI 동작 — 스크린샷 3종
+
+위 curl 9종이 CloudFront 뒤 백엔드 정합성을 보장한다면, 다음 세 컷은 같은 흐름이 **브라우저 UI 에서 동일하게 재현** 된다는 시각적 증거. Day 8 의 3종 패턴 (streaming / reload / new) 을 그대로 따름 — 다만 헤더가 `Day 9 — Chat (CloudFront)` 이고 상단에 `API base: /api/` 배너가 떠 동일오리진 동작임을 표시.
+
+![Day 9 멀티턴 채팅 완료 — 자기소개 + 요약 두 턴이 토큰 단위로 도착](images/01-chat-streaming.png)
+
+**01 — 멀티턴 스트리밍 도착.** `sess-zpfiwj` 세션에서 "긴 문장으로 자기소개 해줘" → 긴 # 자기소개 응답이 token chunk 로 누적, 이어 "요약해줘" → # 요약 응답이 또 chunk 로 도착. 같은 동작이 curl 의 `first-byte 3.15s / total 4.25s` (위 4번) 와 일치. CloudFront `/api/*` behavior 가 `CACHING_DISABLED + ALL_VIEWER_EXCEPT_HOST_HEADER` 로 chunked transfer-encoding 을 viewer 까지 그대로 흘려보낸 결과 — DevTools Network 탭에서도 OPTIONS preflight 0건 (same-origin).
+
+![새로고침 후 같은 세션 히스토리 복원 — Day 7 GET 이 CloudFront 통과해서 시간순 정렬 그대로 도착](images/02-history-reload.png)
+
+**02 — 새로고침 후 히스토리 복원.** F5 → React state 전부 휘발 → useEffect 의 `fetchHistory('sess-zpfiwj')` 가 `GET /api/sessions/sess-zpfiwj/messages` 호출 → CF Function 이 `/sessions/...` 로 strip → Day 7 의 `ScanIndexForward:false + reverse` 가 시간순으로 4건 정확히 복원 (위 6번 결과와 동일). 화면이 01 과 거의 똑같아 보이는 게 정답 — **그게 바로 "복원" 의 의미**.
+
+![새 세션 발급 → 빈 채팅창 + 새 sessionId](images/03-new-session.png)
+
+**03 — `new` 버튼으로 새 세션.** 우상단 `[new]` → `sess-gtb6uc` 새로 발급 + localStorage 갱신 → 채팅창이 "아직 메시지 없음. 아래에서 시작." 상태로 비워짐. DynamoDB PK 단위 격리 — 같은 distribution / 같은 URL 인데도 다른 sessionId 면 빈 응답 (Day 7 의 격리 보장이 CloudFront 뒤에서도 유지).
+
 ### 5) 로컬 dev (선택)
 
 CloudFront 없이 Day 7 백엔드만 부르는 로컬 모드도 가능 — vite 의 dev proxy 가 `/api` 를 Function URL 로 그대로 흘려준다.
