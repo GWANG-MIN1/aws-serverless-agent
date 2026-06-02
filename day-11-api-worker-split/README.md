@@ -133,6 +133,55 @@ curl.exe "$URL/health"
 npx cdk destroy --force
 ```
 
+## 📸 실배포 검증 결과 (2026-06-02)
+
+직접 us-east-1 에 배포 후 4종 검증 통과. 스크린샷 4컷이 각각 다른 주장을 증명한다.
+
+### #1 — API 는 즉시 응답 (`/chat` → HTTP 202)
+
+![POST /chat → 202](./images/01-post-chat-202.png)
+
+POST `/chat` 가 1.1초 (cold start 포함) 만에 `202 Accepted` + `{status:"queued", userSk:...}` 를 돌려줌. **Bedrock 응답 대기를 안 함** — Worker 는 이미 `InvocationType:Event` 로 fire-and-forget 호출됨.
+
+### #2 — 멀티턴 컨텍스트가 진짜로 누적된다 (`inputTokens` 가 증거)
+
+![GET /sessions/.../messages — count:4, inputTokens:290](./images/02-multiturn-context.png)
+
+같은 sessionId 로 2번 POST 한 뒤 GET. `count:4` (user+assistant×2) 가 시간순으로 정렬되어 옴. **결정적 숫자: 두 번째 assistant 의 `inputTokens:290`** — 빈 세션 첫 호출은 53 였는데 290 으로 뛰었다 = Worker 가 DDB 에서 직전 user+assistant 를 Query 해서 Bedrock messages 배열에 넣었다는 증거. **두 람다가 DDB 를 공유 상태 저장소로 정확히 작동**.
+
+### #3 — API IAM 에 Bedrock 권한 없음 (책임 분리)
+
+![API Role 정책](./images/03-api-iam-policy.png)
+
+`aws iam get-role-policy` 결과:
+- ✅ `dynamodb:Query/Put/...` on `ConversationsTable`
+- ✅ `lambda:InvokeFunction` on **`WorkerFunction...:live` alias 한정** (`$LATEST` 못 부름)
+- ❌ `bedrock:*` 한 줄도 없음
+
+→ API Lambda 의 코드 안에 `BedrockRuntimeClient` 를 박아도 IAM 단계에서 거부됨. **책임 분리가 정책 차원에서 강제**.
+
+### #4 — Worker IAM 에는 Bedrock 있음, Lambda Invoke 는 없음
+
+![Worker Role 정책](./images/04-worker-iam-policy.png)
+
+- ✅ `dynamodb:Query/Put/...` (히스토리 Query + assistant Put)
+- ✅ `bedrock:InvokeModel` on `*` (모델 호출 전담)
+- ❌ `lambda:InvokeFunction` 없음 → **Worker 는 다른 람다 못 부름**. 추후 Worker 가 다른 Worker 를 fan-out 하려면 새로 grant 필요 (의도적 제약)
+
+> Account ID 는 가렸지만 IAM 정책의 모든 의미 정보는 남김. AWS 공식상 Account ID 는 시크릿 아니지만 공개 레포 관행으로 마스킹.
+
+### 측정치 요약
+
+| 항목 | 값 | 출처 |
+|---|---|---|
+| API cold start (POST 202 latency) | 1116 ms | curl `--max-time` 측정 |
+| Worker 실행 시간 (cold) | 4271 ms | CloudWatch REPORT |
+| Worker 실행 시간 (warm) | 3828 ms | CloudWatch REPORT |
+| Worker Init Duration | 627 ms | CloudWatch INIT_START |
+| Worker Max Memory Used | 104 MB / 512 MB | CloudWatch REPORT |
+| Bedrock 호출 1턴 input tokens | 53 (빈 세션) | response body |
+| Bedrock 호출 2턴 input tokens | 290 (1턴 누적) | response body — **멀티턴 증거** |
+
 ## ⚠️ 함정 / 트러블슈팅 (Day 11 발견분)
 
 | # | 함정 | 원인 | 회피 |
