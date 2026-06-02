@@ -49,7 +49,7 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 
 > 2026-06-01 정합성 점검 — 원본 [breath103/serverless-agent](https://github.com/breath103/serverless-agent) 실구성 (`packages/{backend,frontend,edge,shared}`, DDB 멀티 테이블, IoT Core MQTT, Lambda@Edge + SSM) 에 맞춰 플랜 재정렬. SQS/EventBridge/Cognito/API GW 는 원본 미사용이라 제외.
 
-- [ ] **Day 11**: API ↔ Worker Lambda 분리 — `InvocationType: Event` async invoke (SQS 없이 원본 패턴 그대로)
+- [x] **Day 11**: API ↔ Worker Lambda 분리 — `InvocationType: Event` async invoke (SQS 없이 원본 패턴 그대로) → [`day-11-api-worker-split/`](./day-11-api-worker-split/)
 - [ ] **Day 12**: DynamoDB 멀티 테이블 분리 — Day 7 의 `ConversationsTable` 1개 → users / sessions / messages 최소 3개로 (원본은 7개)
 - [ ] **Day 13**: Agent Loop + `executeCode` 단일 도구 — Bedrock toolUse/toolResult 흐름, 간소화 TS sandbox 실행
 - [ ] **Day 14**: IoT Core MQTT — Worker 가 `sessions/${id}/events` 토픽에 publish
