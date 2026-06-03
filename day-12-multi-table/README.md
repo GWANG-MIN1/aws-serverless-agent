@@ -154,6 +154,60 @@ aws dynamodb get-item --table-name $SESS `
 npx cdk destroy --force
 ```
 
+## 📸 실배포 검증 결과 (2026-06-03)
+
+직접 us-east-1 에 배포 후 검증. 6컷이 각각 다른 주장을 증명한다.
+
+### #1 — 분리가 연 새 패턴: "유저별 세션 목록" Query
+
+![유저 세션 목록](./images/01-user-sessions-list.png)
+
+유저 생성 → 세션 2개 생성 후 `GET /users/:userId/sessions` → `count:2`. **Day 11 단일 테이블에선 `sessionId` 를 모르면 Scan 외엔 불가능했던 질의**가 `SessionsTable.Query(user_id)` 한 번으로 풀린다. PK 를 `user_id` 로 둔 결과.
+
+### #2 — API 는 즉시 응답 (`/chat` → HTTP 202)
+
+![POST /chat → 202](./images/02-post-chat-202.png)
+
+`{ userId, sessionId, message }` POST 가 `202 Accepted` + `{status:"queued", createdAtId:...}` 즉시 응답. Bedrock 대기 안 함 — Worker 는 `InvocationType:Event` 로 fire-and-forget (Day 11 패턴 유지).
+
+### #3 — Worker 가 분리된 Sessions 테이블 메타를 bump
+
+![session updatedAt bump](./images/03-session-updatedat-bump.png)
+
+`get-item` 결과 `createdAt: 11:56:05.198Z` → **`updatedAt: 11:56:30.366Z`**. Worker 가 assistant 메시지를 MessagesTable 에 Put 한 뒤 SessionsTable 의 해당 세션(`user_id`+`id`) `updatedAt` 을 `UpdateCommand` 로 갱신했다는 증거. **분리된 두 테이블에 걸친 쓰기가 정확히 동작.**
+
+### #4 — 멀티턴 컨텍스트 누적 (`inputTokens` 가 증거)
+
+![multiturn messages](./images/06-multiturn-messages.png)
+
+같은 세션 3턴 후 `GET /sessions/:id/messages` → `count:6` (user+assistant ×3) 시간순. **결정적 숫자: `inputTokens` 47 → 133 → 222 단조 증가** = 턴마다 직전 user+assistant 가 MessagesTable 에서 Query 되어 Bedrock messages 배열에 누적됨. assistant 가 직전 질문을 실제로 기억해 답함. **단일 → 멀티 테이블로 쪼갰어도 대화 누적 데이터-패스가 그대로 작동.**
+
+### #5/#6 — Worker IAM: 테이블 단위 최소권한
+
+![Worker IAM 1](./images/04-worker-iam-no-users.png)
+![Worker IAM 2](./images/05-worker-iam-no-users-2.png)
+
+`aws iam get-role-policy` (Worker role) 결과:
+- ✅ `dynamodb:Query/PutItem/UpdateItem/...` on **MessagesTable + SessionsTable ARN 만**
+- ❌ **UsersTable ARN 한 줄도 없음** → Worker 는 UsersTable 을 정책 차원에서 못 본다
+- ✅ `bedrock:InvokeModel` on `*` (모델 호출 전담)
+- ❌ `lambda:InvokeFunction` 없음 → 다른 람다 못 부름 (Day 11 제약 유지)
+
+→ **테이블 분리가 IAM 최소권한을 도메인 단위로 강제**. API 는 반대로 Users/Sessions/Messages 3테이블 RW + workerAlias invoke 를 갖되 Bedrock 권한은 없음.
+
+> Account ID 는 가렸지만 ARN 의 의미 정보(region/table)는 남김. 공개 레포 관행으로 마스킹.
+
+### 측정치 요약
+
+| 항목 | 값 | 출처 |
+|---|---|---|
+| 유저 세션 목록 | `count:2` | `GET /users/:id/sessions` |
+| `/chat` 응답 | HTTP 202 `{status:"queued"}` | curl `-i` |
+| 세션 createdAt → updatedAt | `11:56:05.198Z` → `11:56:30.366Z` | `get-item` |
+| 멀티턴 메시지 수 | `count:6` (3턴) | `GET .../messages` |
+| inputTokens 누적 | **47 → 133 → 222** | 응답 body — 멀티턴 증거 |
+| Worker IAM 테이블 | Messages + Sessions (Users 제외) | `get-role-policy` |
+
 ## ⚠️ 함정 / 트러블슈팅 (Day 12 발견분)
 
 | # | 함정 | 원인 | 회피 |
