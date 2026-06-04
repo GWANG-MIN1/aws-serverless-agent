@@ -51,7 +51,7 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 
 - [x] **Day 11**: API ↔ Worker Lambda 분리 — `InvocationType: Event` async invoke (SQS 없이 원본 패턴 그대로) → [`day-11-api-worker-split/`](./day-11-api-worker-split/)
 - [x] **Day 12**: DynamoDB 멀티 테이블 분리 — `ConversationsTable` 1개 → Users / Sessions / Messages 3개 (원본 `users`/`chat-sessions`/`chat-messages` 키 스키마 미러). `SessionsTable` PK=`user_id` 로 "유저별 세션 목록" Query 가 열림 → [`day-12-multi-table/`](./day-12-multi-table/)
-- [ ] **Day 13**: Agent Loop + `executeCode` 단일 도구 — Bedrock toolUse/toolResult 흐름, 간소화 TS sandbox 실행
+- [x] **Day 13**: Agent Loop + `executeCode` 단일 도구 — Worker 가 Bedrock Converse `toolUse`/`toolResult` 를 루프로 왕복(`node:vm` 샌드박스 + `read()`), 단계별 `kind` 행 저장, timeout 60s→5min → [`day-13-agent-loop/`](./day-13-agent-loop/)
 - [ ] **Day 14**: IoT Core MQTT — Worker 가 `sessions/${id}/events` 토픽에 publish
 - [ ] **Day 15**: 브라우저 ↔ MQTT WSS 직접 subscribe — mqtt.js v5 + SigV4 쿼리스트링 서명
 - [ ] **Day 16**: Lambda@Edge 로 Day 9 CF Function 업그레이드 — `/api/*` 라우팅 + **SSM Parameter Store 로 backend Function URL 캐싱** (cold start 마다 deploy-time 값 조회의 정공법)
