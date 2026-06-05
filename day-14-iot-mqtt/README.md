@@ -178,6 +178,32 @@ entity_update row.kind:"text"        row.content:"4509040214 입니다"
 npx cdk destroy --force
 ```
 
+## 🔍 실배포 검증 결과
+
+us-east-1 에 실제 배포 후, MQTT test client 에서 `sessions/+/events` 를 구독한 채
+`"48571 곱하기 92834 ..."` 를 보냈다. `/chat` 이 202 를 반환한 직후, **폴링 없이** 토픽으로
+이벤트 3개가 차례로 도착했다.
+
+![MQTT 실시간 이벤트](./images/01-mqtt-realtime-events.png)
+
+토픽 `sessions/0c3a4d2d-…/events` 로 온 마지막 이벤트의 payload —
+`{ type:"entity_update", table:"messages", op:"upsert", row:{ kind:"text",
+content:"48571 × 92834 = **4,509,040,214** 입니다." } }`. 저장하는 그 순간 흘린 행 그대로다.
+
+![GET /messages 교차확인](./images/02-messages-loop-crosscheck.png)
+
+같은 세션을 `GET /sessions/:id/messages` 로 조회하면 한 턴의 루프 4행이 DDB 에도 남아 있다 —
+`user` → `tool_call`(`code: 48571 * 92834; read(result)`) → `tool_result`(`reads:[4509040214]`, `ok:true`)
+→ `text`(`4,509,040,214`). **MQTT 로 흐른 내용과 DDB 저장본이 동일** = "저장 = publish" 가 그대로 동작.
+
+| 측정치 | 값 |
+|---|---|
+| 토픽 | `sessions/<sessionId>/events` |
+| 한 턴 publish 이벤트 수 | 3 (tool_call / tool_result / text) |
+| 202 → 첫 이벤트 도착 | 수 초 내 (폴링 0회) |
+| `toolUseId` ↔ `tool_result` 짝 | `tooluse_BANJSApVrWfHrm9cSvi8Xh` 일치 |
+| 토큰 (마지막 step) | in 931 / out 26 |
+
 ## ⚠️ 함정 / 트러블슈팅 (Day 14 발견분)
 
 | # | 함정 | 원인 | 회피 |
