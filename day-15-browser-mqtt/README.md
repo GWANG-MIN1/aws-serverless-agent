@@ -134,6 +134,33 @@ python3 -m http.server 5173      # 또는: npx serve .
 npx cdk destroy --force
 ```
 
+## 🔍 실배포 검증 결과
+
+us-east-1 에 배포 후, 브라우저(localhost) 페이지가 **AWS 콘솔 없이** Worker 의 Agent Loop 단계를
+실시간으로 받아냈다.
+
+![브라우저 MQTT 실시간 구독](./images/01-browser-mqtt-live.png)
+
+**① 연결 + 구독** → 상태가 `connected — sessions/0c97e0c2-…/events`(초록) 로 바뀌어 WSS 구독 성공.
+**② 전송** 직후, **폴링 없이** 카드가 순서대로 쌓였다 —
+`tool_call`(`const result = 48571 * 92834; read(result)`) → `tool_result`(`{"reads":[4509040214]}`)
+→ `text`(`4,509,040,214 입니다`). Day 14 의 publish 가 브라우저까지 그대로 도달한 것.
+
+![/realtime 의 SigV4 WSS URL 응답](./images/02-realtime-url-response.png)
+
+서버 측 `GET /sessions/:id/realtime` 은 `wss://…-ats.iot.us-east-1.amazonaws.com/mqtt?X-Amz-Algorithm=…
+&X-Amz-Credential=ASIA…&X-Amz-Signature=…&X-Amz-Security-Token=…` 형태의 **SigV4-presigned URL** +
+`channel: sessions/<id>/events` 를 돌려준다. `ASIA…` 키는 AssumeRole 로 발급된 **1시간 단명** 임시
+자격증명이라 노출돼도 그 세션 구독 외엔 아무것도 못 한다(스코핑의 핵심).
+
+| 측정치 | 값 |
+|---|---|
+| 연결 방식 | 브라우저 `mqtt.connect(wss URL)` (X.509 인증서 없음, IAM 서명만) |
+| channel | `sessions/<sessionId>/events` |
+| 한 턴 수신 이벤트 | 3 (tool_call / tool_result / text) |
+| 자격증명 | STS AssumeRole + 세션정책, `expiresInSec: 3600` |
+| 호스팅 | 정적 페이지 localhost (S3/CloudFront 는 Day 16) |
+
 ## ⚠️ 함정 / 트러블슈팅 (Day 15 발견분)
 
 | # | 함정 | 원인 | 회피 |
