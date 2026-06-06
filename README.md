@@ -53,7 +53,7 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 - [x] **Day 12**: DynamoDB 멀티 테이블 분리 — `ConversationsTable` 1개 → Users / Sessions / Messages 3개 (원본 `users`/`chat-sessions`/`chat-messages` 키 스키마 미러). `SessionsTable` PK=`user_id` 로 "유저별 세션 목록" Query 가 열림 → [`day-12-multi-table/`](./day-12-multi-table/)
 - [x] **Day 13**: Agent Loop + `executeCode` 단일 도구 — Worker 가 Bedrock Converse `toolUse`/`toolResult` 를 루프로 왕복(`node:vm` 샌드박스 + `read()`), 단계별 `kind` 행 저장, timeout 60s→5min → [`day-13-agent-loop/`](./day-13-agent-loop/)
 - [x] **Day 14**: IoT Core MQTT — Worker 가 Agent Loop 각 단계를 저장하는 순간 `sessions/${id}/events` 토픽에 publish (`IoTDataPlaneClient`, `iot:DescribeEndpoint(Data-ATS)` 런타임 조회 + `iot:Publish` 토픽 한정 IAM, best-effort) → [`day-14-iot-mqtt/`](./day-14-iot-mqtt/)
-- [ ] **Day 15**: 브라우저 ↔ MQTT WSS 직접 subscribe — mqtt.js v5 + SigV4 쿼리스트링 서명
+- [x] **Day 15**: 브라우저 ↔ MQTT WSS 직접 subscribe — API 가 `GET /sessions/:id/realtime` 로 SigV4-presigned WSS URL 발급(STS AssumeRole + 세션정책으로 그 세션 토픽만 구독 허용), 브라우저는 mqtt.js(esm.sh)로 구독·렌더. 페이지는 localhost 검증(호스팅은 Day 16) → [`day-15-browser-mqtt/`](./day-15-browser-mqtt/)
 - [ ] **Day 16**: Lambda@Edge 로 Day 9 CF Function 업그레이드 — `/api/*` 라우팅 + **SSM Parameter Store 로 backend Function URL 캐싱** (cold start 마다 deploy-time 값 조회의 정공법)
 - [ ] **Day 17+**: 회고 + 비용 / 보안 강화 (Telegram skill 등 외부 통합은 옵션 — 원본도 로컬 dev 전용)
 
