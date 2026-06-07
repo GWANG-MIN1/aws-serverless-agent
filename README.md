@@ -54,7 +54,7 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 - [x] **Day 13**: Agent Loop + `executeCode` 단일 도구 — Worker 가 Bedrock Converse `toolUse`/`toolResult` 를 루프로 왕복(`node:vm` 샌드박스 + `read()`), 단계별 `kind` 행 저장, timeout 60s→5min → [`day-13-agent-loop/`](./day-13-agent-loop/)
 - [x] **Day 14**: IoT Core MQTT — Worker 가 Agent Loop 각 단계를 저장하는 순간 `sessions/${id}/events` 토픽에 publish (`IoTDataPlaneClient`, `iot:DescribeEndpoint(Data-ATS)` 런타임 조회 + `iot:Publish` 토픽 한정 IAM, best-effort) → [`day-14-iot-mqtt/`](./day-14-iot-mqtt/)
 - [x] **Day 15**: 브라우저 ↔ MQTT WSS 직접 subscribe — API 가 `GET /sessions/:id/realtime` 로 SigV4-presigned WSS URL 발급(STS AssumeRole + 세션정책으로 그 세션 토픽만 구독 허용), 브라우저는 mqtt.js(esm.sh)로 구독·렌더. 페이지는 localhost 검증(호스팅은 Day 16) → [`day-15-browser-mqtt/`](./day-15-browser-mqtt/)
-- [ ] **Day 16**: Lambda@Edge 로 Day 9 CF Function 업그레이드 — `/api/*` 라우팅 + **SSM Parameter Store 로 backend Function URL 캐싱** (cold start 마다 deploy-time 값 조회의 정공법)
+- [x] **Day 16**: Lambda@Edge 로 Day 9 CF Function 업그레이드 — CloudFront+S3 호스팅(same-origin `/api`), origin-request Lambda@Edge 가 `/api/*` 를 **SSM Parameter Store(`/serverless-agent/backend/url`)** 에서 읽은 backend Function URL 로 origin 동적 교체 + `/api` strip (백엔드/CDN 디커플링, cold start 60s 캐시) → [`day-16-lambda-edge/`](./day-16-lambda-edge/)
 - [ ] **Day 17+**: 회고 + 비용 / 보안 강화 (Telegram skill 등 외부 통합은 옵션 — 원본도 로컬 dev 전용)
 
 ---
