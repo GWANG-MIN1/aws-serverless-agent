@@ -133,6 +133,31 @@ npx cdk destroy --force
 
 > ⚠️ Lambda@Edge 는 엣지 복제본 때문에 **즉시 삭제가 안 될 수 있다**(`Lambda function ... replicated` 오류). CloudFront 분배가 내려간 뒤 수십 분~수시간 후 자동 정리되거나, 시간 두고 `destroy` 재시도.
 
+## 🔍 실배포 검증 결과
+
+us-east-1 에 배포 후, **localhost 가 아닌 CloudFront 도메인**에서 페이지가 same-origin `/api` 로
+끝까지 동작했다.
+
+![CloudFront + Lambda@Edge 위에서 실시간 동작](./images/01-cloudfront-edge-live.png)
+
+호스팅된 페이지에서 **⓪ 유저·세션 생성**(→ `/api/users` 가 엣지를 타고 백엔드 생성) → **① 연결+구독**
+(`connected — sessions/74b80eec-…/events`, 초록) → **② 전송** → assistant 가 도구 결과
+`4,509,040,214` 를 실시간 카드로 렌더. 정적 페이지·API·실시간이 **한 도메인 뒤**에서 맞물려 돈다.
+
+![/api/health 가 엣지를 타고 백엔드에](./images/02-api-health-via-edge.png)
+
+`curl $SITE/api/health` → `{"ok":true,"day":16,"role":"api"}`. CloudFront `api/*` →
+origin-request Lambda@Edge(SSM 조회 + `/api` strip → `/health`) → Function URL 까지의 경로가
+실제로 연결됨을 확인. (`/api` 가 백엔드엔 없는데도 200 = 엣지가 strip 한 증거.)
+
+| 측정치 | 값 |
+|---|---|
+| 진입점 | `https://<id>.cloudfront.net` (단일 도메인, CORS 없음) |
+| API 라우팅 | `api/*` → origin-request Lambda@Edge → SSM(`/serverless-agent/backend/url`) → Function URL |
+| `/api` strip | 엣지에서 제거 (`/api/health` → `/health`, 200) |
+| 실시간 | 브라우저 → IoT WSS 직접 (CDN 우회), 세션 토픽 구독 |
+| backend host 출처 | distribution 에 안 구움 — **SSM 런타임 조회**(60s 캐시) |
+
 ## ⚠️ 함정 / 트러블슈팅 (Day 16 발견분)
 
 | # | 함정 | 원인 | 회피 |
