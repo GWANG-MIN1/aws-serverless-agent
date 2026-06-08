@@ -20,6 +20,7 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 | **Phase 1** | 부품 하나씩 익히기 | Lambda, DDB, Bedrock 각각 단독 |
 | **Phase 2** | 연결된 MVP 챗봇 동작 | API Lambda + DDB + Bedrock + S3/CloudFront |
 | **Phase 3** | 원본 고급 패턴 차용 | Agent Loop, IoT MQTT, Lambda@Edge, Telegram |
+| **Phase 4** | 원본에서 갈라지기 (내 색깔) | Cost Explorer skill, Discord 봇, X-Ray/관측성 |
 
 ---
 
