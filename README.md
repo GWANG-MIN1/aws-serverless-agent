@@ -55,7 +55,13 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 - [x] **Day 14**: IoT Core MQTT — Worker 가 Agent Loop 각 단계를 저장하는 순간 `sessions/${id}/events` 토픽에 publish (`IoTDataPlaneClient`, `iot:DescribeEndpoint(Data-ATS)` 런타임 조회 + `iot:Publish` 토픽 한정 IAM, best-effort) → [`day-14-iot-mqtt/`](./day-14-iot-mqtt/)
 - [x] **Day 15**: 브라우저 ↔ MQTT WSS 직접 subscribe — API 가 `GET /sessions/:id/realtime` 로 SigV4-presigned WSS URL 발급(STS AssumeRole + 세션정책으로 그 세션 토픽만 구독 허용), 브라우저는 mqtt.js(esm.sh)로 구독·렌더. 페이지는 localhost 검증(호스팅은 Day 16) → [`day-15-browser-mqtt/`](./day-15-browser-mqtt/)
 - [x] **Day 16**: Lambda@Edge 로 Day 9 CF Function 업그레이드 — CloudFront+S3 호스팅(same-origin `/api`), origin-request Lambda@Edge 가 `/api/*` 를 **SSM Parameter Store(`/serverless-agent/backend/url`)** 에서 읽은 backend Function URL 로 origin 동적 교체 + `/api` strip (백엔드/CDN 디커플링, cold start 60s 캐시) → [`day-16-lambda-edge/`](./day-16-lambda-edge/)
-- [ ] **Day 17+**: 회고 + 비용 / 보안 강화 (Telegram skill 등 외부 통합은 옵션 — 원본도 로컬 dev 전용)
+### Phase 4: 내 색깔 — 원본에서 갈라지기
+
+> 원본 코어(Agent Loop·IoT·Edge) 재현이 끝나, 여기서부턴 원본과 다르게 확장한다.
+
+- [x] **Day 17**: `awsCost` skill — Day 13 에서 들어냈던 "샌드박스 skill 주입"을 되살려, `executeCode` 안에 `awsCost()` 함수를 넣음. "내 AWS 비용 얼마야?" 질문에 모델이 Cost Explorer 를 실제 호출(`ce:GetCostAndUsage`)해 답하고, `skillCalls` 로 호출을 추적(LLM 엔 비공개) → [`day-17-cost-skill/`](./day-17-cost-skill/)
+- [ ] **Day 18**: 디스코드 봇 — 원본 Telegram 대신 Discord Interactions 웹훅(Ed25519 서명검증 + 3초 ack→deferred followup)으로 기존 `/chat`+Agent Loop 재사용
+- [ ] **Day 19**: 관측성/운영 — X-Ray 분산추적(API→Worker→Bedrock) + CloudWatch 대시보드/알람 + 월 비용 예산(원본에 거의 없는 DevOps 레이어)
 
 ---
 

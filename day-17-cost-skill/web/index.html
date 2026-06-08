@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Day 17 — awsCost skill</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif;
+      background: #0e1116; color: #e6edf3; }
+    header { padding: 14px 18px; border-bottom: 1px solid #232a33; }
+    header h1 { margin: 0; font-size: 16px; }
+    header p { margin: 4px 0 0; color: #8b949e; font-size: 12px; }
+    main { display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 60px); }
+    .panel { padding: 16px; overflow: auto; }
+    .panel.left { border-right: 1px solid #232a33; }
+    label { display: block; margin: 10px 0 4px; color: #8b949e; font-size: 12px; }
+    input, button, textarea { width: 100%; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid #30363d; background: #161b22; color: #e6edf3; font: inherit; }
+    button { cursor: pointer; background: #1f6feb; border-color: #1f6feb; margin-top: 10px; font-weight: 600; }
+    button.secondary { background: #21262d; border-color: #30363d; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .status { margin-top: 12px; padding: 8px 10px; border-radius: 8px; font-size: 12px;
+      background: #161b22; border: 1px solid #30363d; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .idle { background: #6e7681; } .connecting { background: #d29922; } .connected { background: #3fb950; } .error { background: #f85149; }
+    #log { display: flex; flex-direction: column; gap: 8px; }
+    .ev { border: 1px solid #30363d; border-radius: 10px; padding: 10px 12px; background: #11161d; }
+    .ev .k { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 700; }
+    .k.text { background: #1f6feb33; color: #79c0ff; }
+    .k.tool_call { background: #d2992233; color: #e3b341; }
+    .k.tool_result { background: #3fb95033; color: #7ee787; }
+    .ev pre { margin: 8px 0 0; white-space: pre-wrap; word-break: break-word; color: #c9d1d9; font-size: 12.5px; }
+    .ev .meta { color: #6e7681; font-size: 11px; margin-top: 6px; }
+    .empty { color: #6e7681; padding: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Day 17 — awsCost skill: 에이전트가 진짜 AWS 비용을 조회</h1>
+    <p>샌드박스에 주입된 <code>awsCost()</code> skill 로, "내 비용 얼마야?" 질문에 모델이 Cost Explorer 를 실제 호출해 답한다.</p>
+  </header>
+  <main>
+    <section class="panel left">
+      <label>API Base (same-origin)</label>
+      <input id="api" value="/api" />
+      <button id="provision" class="secondary">⓪ 유저·세션 생성</button>
+      <label>User ID</label>
+      <input id="user" placeholder="유저 uuid" />
+      <label>Session ID</label>
+      <input id="session" placeholder="세션 uuid (이 토픽을 구독)" />
+      <button id="connect">① 연결 + 구독</button>
+      <div class="status" id="status"><span class="dot idle"></span><span id="statusText">idle</span></div>
+
+      <label style="margin-top:18px">메시지 (skill 을 쓰게 유도)</label>
+      <textarea id="msg" rows="3">이번 달 내 AWS 비용이 얼마야? 서비스별 상위 항목도 알려줘.</textarea>
+      <button id="send" class="secondary" disabled>② 전송 (POST /chat)</button>
+    </section>
+
+    <section class="panel">
+      <div id="log"><div class="empty">연결 후 메시지를 보내면 여기에 단계가 실시간으로 쌓입니다.</div></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import mqtt from "https://esm.sh/mqtt@5";
+
+    const $ = (id) => document.getElementById(id);
+    const qs = new URLSearchParams(location.search);
+    // ?api=&user=&session= 로 프리필 (편의)
+    for (const k of ["api", "user", "session"]) if (qs.get(k)) $(k).value = qs.get(k);
+
+    const logEl = $("log");
+    let client = null;
+
+    function setStatus(kind, text) {
+      $("status").innerHTML = `<span class="dot ${kind}"></span><span>${text}</span>`;
+    }
+
+    function clearEmpty() {
+      const e = logEl.querySelector(".empty");
+      if (e) e.remove();
+    }
+
+    function render(event) {
+      // Day 14 가 쏘는 모양: { type:"entity_update", table:"messages", op:"upsert", row:{...} }
+      const row = event?.row ?? event;
+      const kind = row?.kind ?? "text";
+      clearEmpty();
+      const div = document.createElement("div");
+      div.className = "ev";
+      let body = row?.content ?? "";
+      if (kind === "tool_call" && row?.code) body += "\n\n// code\n" + row.code;
+      if (kind === "tool_result") body = row?.content ?? "";
+      div.innerHTML =
+        `<span class="k ${kind}">${kind}</span> ` +
+        `<span class="meta">${row?.role ?? ""} · ${row?.created_at_id ?? ""}</span>` +
+        `<pre>${escapeHtml(typeof body === "string" ? body : JSON.stringify(body, null, 2))}</pre>`;
+      logEl.appendChild(div);
+      div.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+    }
+
+    $("connect").onclick = async () => {
+      const api = $("api").value.trim().replace(/\/$/, "");
+      const session = $("session").value.trim();
+      if (!api || !session) { alert("API Base URL 과 Session ID 를 입력하세요"); return; }
+
+      setStatus("connecting", "connection URL 요청 중…");
+      try {
+        const res = await fetch(`${api}/sessions/${session}/realtime`);
+        if (!res.ok) throw new Error(`realtime ${res.status}`);
+        const { url, channel } = await res.json();
+
+        if (client) client.end(true);
+        setStatus("connecting", "WSS 연결 중…");
+        client = mqtt.connect(url, {
+          protocolVersion: 4,
+          reconnectPeriod: 0,
+          clientId: `browser-${Math.random().toString(36).slice(2, 10)}`,
+        });
+
+        client.on("connect", () => {
+          client.subscribe(channel, { qos: 1 }, (err) => {
+            if (err) { setStatus("error", "subscribe 실패: " + err.message); return; }
+            setStatus("connected", `connected — ${channel}`);
+            $("send").disabled = false;
+          });
+        });
+        client.on("message", (_topic, payload) => {
+          try { render(JSON.parse(payload.toString())); }
+          catch (e) { console.warn("parse 실패", e); }
+        });
+        client.on("error", (e) => setStatus("error", e.message));
+        client.on("close", () => { $("send").disabled = true; });
+      } catch (e) {
+        setStatus("error", e.message);
+      }
+    };
+
+    // ⓪ 유저·세션을 same-origin /api 로 만들어 칸을 채운다 (페이지 자체로 끝까지 검증 가능).
+    $("provision").onclick = async () => {
+      const api = $("api").value.trim().replace(/\/$/, "");
+      try {
+        setStatus("connecting", "유저·세션 생성 중…");
+        const u = await (await fetch(`${api}/users`, {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name: "browser" }),
+        })).json();
+        $("user").value = u.id;
+        const s = await (await fetch(`${api}/users/${u.id}/sessions`, {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ title: "edge" }),
+        })).json();
+        $("session").value = s.sessionId;
+        setStatus("idle", `생성됨 — session ${s.sessionId.slice(0, 8)}…`);
+      } catch (e) {
+        setStatus("error", "생성 실패: " + e.message);
+      }
+    };
+
+    $("send").onclick = async () => {
+      const api = $("api").value.trim().replace(/\/$/, "");
+      const body = {
+        userId: $("user").value.trim(),
+        sessionId: $("session").value.trim(),
+        message: $("msg").value,
+      };
+      const res = await fetch(`${api}/chat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.status !== 202) alert("chat 전송 실패: " + res.status);
+    };
+  </script>
+</body>
+</html>
