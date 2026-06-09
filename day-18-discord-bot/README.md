@@ -114,6 +114,28 @@ curl.exe -s -X POST "https://discord.com/api/v10/applications/$APP/guilds/$GUILD
 npx cdk destroy --force   # Lambda@Edge 복제본 때문에 시간 두고 재시도(Day 16 함정 #46)
 ```
 
+## 🔍 실배포 검증 결과
+
+us-east-1 배포 + Discord 앱 연동 후, 개인 서버에서 슬래시 `/ask` 로 검증했다. **봇(Day 18) + `awsCost` skill(Day 17) 을 한 번에** 확인.
+
+![/ask 자기소개](./images/01-discord-ask-intro.png)
+
+`/ask 안녕? 너 뭐야?` → "Mins agent" 봇이 deferred("생각 중…") 후 답으로 갱신. **Ed25519 서명검증 →
+Interactions 엔드포인트 → `/ask` → Agent Loop → followup PATCH** 전 체인이 동작.
+
+![/ask AWS 비용](./images/02-discord-aws-cost.png)
+
+`/ask 이번 달 AWS 비용?` → **총 $0.000005, 서비스별 Lambda ~80% / S3 ~20% / CloudFront** 로 답.
+추측이 아니라 **`awsCost` skill 이 Cost Explorer 를 `groupByService` 로 실제 호출**한 값(금액이 극소인 건
+프리티어 + 사용량 거의 0이라 정상) — Day 17 skill 까지 실배포로 검증된 셈.
+
+| 측정치 | 값 |
+|---|---|
+| 채널 | Discord 슬래시 `/ask` (개인 서버) |
+| 응답 모델 | deferred(type 5) → followup PATCH 로 최종 답 교체 |
+| 검증 범위 | 봇 왕복(Day 18) + `awsCost` 실호출(Day 17) 동시 |
+| 의존성 | 0 추가 (node:crypto 서명검증 + global fetch) |
+
 ## ⚠️ 함정 / 트러블슈팅 (Day 18 발견분)
 
 | # | 함정 | 원인 | 회피 |
