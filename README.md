@@ -61,7 +61,7 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 > 원본 코어(Agent Loop·IoT·Edge) 재현이 끝나, 여기서부턴 원본과 다르게 확장한다.
 
 - [x] **Day 17**: `awsCost` skill — Day 13 에서 들어냈던 "샌드박스 skill 주입"을 되살려, `executeCode` 안에 `awsCost()` 함수를 넣음. "내 AWS 비용 얼마야?" 질문에 모델이 Cost Explorer 를 실제 호출(`ce:GetCostAndUsage`)해 답하고, `skillCalls` 로 호출을 추적(LLM 엔 비공개) → [`day-17-cost-skill/`](./day-17-cost-skill/)
-- [ ] **Day 18**: 디스코드 봇 — 원본 Telegram 대신 Discord Interactions 웹훅(Ed25519 서명검증 + 3초 ack→deferred followup)으로 기존 `/chat`+Agent Loop 재사용
+- [x] **Day 18**: 디스코드 봇 — 원본 Telegram 대신 Discord Interactions 웹훅. 전용 Lambda 가 Ed25519 서명검증(node:crypto, 의존성 0) → PING/PONG → `/ask` 슬래시 → `type 5`(deferred) 즉시 반환 + Worker async 호출, Worker 가 끝나면 followup webhook 을 PATCH 해 답을 채움. 기존 Agent Loop+`awsCost` skill 그대로 재사용 → [`day-18-discord-bot/`](./day-18-discord-bot/)
 - [ ] **Day 19**: 관측성/운영 — X-Ray 분산추적(API→Worker→Bedrock) + CloudWatch 대시보드/알람 + 월 비용 예산(원본에 거의 없는 DevOps 레이어)
 
 ---
