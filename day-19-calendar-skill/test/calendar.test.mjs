@@ -62,6 +62,8 @@ test("fetches, expands recurring events, and returns sorted read-only data", asy
   assert.equal(result.count, 4);
   assert.equal(result.sourceEventCount, 2);
   assert.equal(result.matchingEventCount, 4);
+  assert.equal(result.fromLocalDate, "2026-06-08");
+  assert.equal(result.toLocalDateExclusive, "2026-06-15");
   assert.deepEqual(
     result.events.map((event) => event.title),
     ["아침 체크인", "아침 체크인", "팀 회의", "아침 체크인"],

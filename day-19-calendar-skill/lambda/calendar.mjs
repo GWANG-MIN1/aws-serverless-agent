@@ -41,6 +41,15 @@ function partsAt(date, timeZone) {
   return Object.fromEntries(parts.filter((p) => p.type !== "literal").map((p) => [p.type, Number(p.value)]));
 }
 
+function localYmd(date, timeZone) {
+  const parts = partsAt(date, timeZone);
+  return [
+    String(parts.year).padStart(4, "0"),
+    String(parts.month).padStart(2, "0"),
+    String(parts.day).padStart(2, "0"),
+  ].join("-");
+}
+
 function localMidnightUtc(year, month, day, timeZone) {
   const targetAsUtc = Date.UTC(year, month - 1, day);
   let guess = targetAsUtc;
@@ -235,6 +244,8 @@ export async function listPublicCalendarEvents({
       timeZone,
       from: resolved.from.toISOString(),
       to: resolved.to.toISOString(),
+      fromLocalDate: localYmd(resolved.from, timeZone),
+      toLocalDateExclusive: localYmd(resolved.to, timeZone),
       sourceEventCount: document.sourceEventCount,
       matchingEventCount: document.matchingEventCount,
       count: document.events.length,
