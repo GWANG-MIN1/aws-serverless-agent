@@ -69,6 +69,9 @@ test("fetches, expands recurring events, and returns sorted read-only data", asy
     ["아침 체크인", "아침 체크인", "팀 회의", "아침 체크인"],
   );
   assert.equal(result.events[0].start, "2026-06-08T00:00:00.000Z");
+  assert.equal(result.events[0].startLocal, "2026-06-08T09:00:00");
+  assert.equal(result.events[0].endLocal, "2026-06-08T09:30:00");
+  assert.equal(result.events[0].timeZone, "Asia/Seoul");
   assert.equal(result.events[0].recurring, true);
   assert.equal(result.events[2].location, "회의실 A");
   assert.equal(result.warning, undefined);

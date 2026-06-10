@@ -50,6 +50,15 @@ function localYmd(date, timeZone) {
   ].join("-");
 }
 
+function localDateTime(date, timeZone) {
+  const parts = partsAt(date, timeZone);
+  return `${localYmd(date, timeZone)}T${[
+    String(parts.hour).padStart(2, "0"),
+    String(parts.minute).padStart(2, "0"),
+    String(parts.second).padStart(2, "0"),
+  ].join(":")}`;
+}
+
 function localMidnightUtc(year, month, day, timeZone) {
   const targetAsUtc = Date.UTC(year, month - 1, day);
   let guess = targetAsUtc;
@@ -128,22 +137,26 @@ function cleanText(value, maxLength) {
   return value.trim().slice(0, maxLength);
 }
 
-function mapEvent(event, fallbackUid, recurring = Boolean(event.rrule)) {
+function mapEvent(event, fallbackUid, recurring = Boolean(event.rrule), timeZone = "Asia/Seoul") {
   const start = event.start instanceof Date ? event.start : new Date(event.start);
   const end = event.end instanceof Date ? event.end : start;
+  const allDay = Boolean(event.isFullDay ?? event.start?.dateOnly);
   return {
     uid: String(event.uid ?? fallbackUid),
     title: cleanText(event.summary, 500) ?? "(제목 없음)",
     start: start.toISOString(),
     end: end.toISOString(),
-    allDay: Boolean(event.isFullDay ?? event.start?.dateOnly),
+    startLocal: allDay ? localYmd(start, timeZone) : localDateTime(start, timeZone),
+    endLocal: allDay ? localYmd(end, timeZone) : localDateTime(end, timeZone),
+    timeZone,
+    allDay,
     location: cleanText(event.location, 500),
     description: cleanText(event.description, 2_000),
     recurring,
   };
 }
 
-async function parseCalendarDocument(icsText, { from, to, limit = DEFAULT_LIMIT } = {}) {
+async function parseCalendarDocument(icsText, { from, to, limit = DEFAULT_LIMIT, timeZone = "Asia/Seoul" } = {}) {
   const parsed = await ical.async.parseICS(icsText);
   const events = [];
   let sourceEventCount = 0;
@@ -164,7 +177,7 @@ async function parseCalendarDocument(icsText, { from, to, limit = DEFAULT_LIMIT 
       for (const instance of instances) {
         const end = instance.end instanceof Date ? instance.end : instance.start;
         if (overlaps(instance.start, end, from, to)) {
-          events.push(mapEvent(instance, `${key}#${instance.start.toISOString()}`, true));
+          events.push(mapEvent(instance, `${key}#${instance.start.toISOString()}`, true, timeZone));
         }
       }
       continue;
@@ -172,7 +185,7 @@ async function parseCalendarDocument(icsText, { from, to, limit = DEFAULT_LIMIT 
 
     const end = component.end instanceof Date ? component.end : component.start;
     if (overlaps(component.start, end, from, to)) {
-      events.push(mapEvent(component, key));
+      events.push(mapEvent(component, key, Boolean(component.rrule), timeZone));
     }
   }
 
@@ -232,7 +245,7 @@ export async function listPublicCalendarEvents({
     const text = await response.text();
     if (Buffer.byteLength(text, "utf8") > MAX_ICS_BYTES) throw new Error("calendar file is too large");
 
-    const document = await parseCalendarDocument(text, { ...resolved, limit });
+    const document = await parseCalendarDocument(text, { ...resolved, limit, timeZone });
     const warning = document.sourceEventCount === 0
       ? "The configured public calendar feed contains no VEVENT entries. Check that events were saved to this exact public calendar."
       : document.matchingEventCount === 0
