@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 
 import {
   listPublicCalendarEvents,
@@ -161,4 +162,41 @@ test("preformats Korean weekdays, midnight times, and exclusive all-day ends", a
       },
     ],
   );
+});
+
+test("keeps all-day calendar dates unchanged in a UTC Lambda runtime", () => {
+  const moduleUrl = new URL("../lambda/calendar.mjs", import.meta.url).href;
+  const script = `
+    import { parseCalendarEvents } from ${JSON.stringify(moduleUrl)};
+    const events = await parseCalendarEvents(${JSON.stringify(DISPLAY_ICS)}, {
+      from: new Date("2026-06-17T15:00:00.000Z"),
+      to: new Date("2026-06-19T15:00:00.000Z"),
+      timeZone: "Asia/Seoul",
+    });
+    process.stdout.write(JSON.stringify(events.map((event) => ({
+      title: event.title,
+      startLocal: event.startLocal,
+      endLocal: event.endLocal,
+      answerLine: event.answerLine,
+    }))));
+  `;
+  const output = execFileSync(process.execPath, ["--input-type=module", "-e", script], {
+    encoding: "utf8",
+    env: { ...process.env, TZ: "UTC" },
+  });
+
+  assert.deepEqual(JSON.parse(output), [
+    {
+      title: "랩 미팅",
+      startLocal: "2026-06-18",
+      endLocal: "2026-06-19",
+      answerLine: "랩 미팅 — 2026년 6월 18일 (목) · 종일",
+    },
+    {
+      title: "운동",
+      startLocal: "2026-06-19T00:00:00",
+      endLocal: "2026-06-19T01:00:00",
+      answerLine: "운동 — 2026년 6월 19일 (금) · 00:00~01:00",
+    },
+  ]);
 });

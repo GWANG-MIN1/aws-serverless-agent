@@ -50,6 +50,24 @@ function localYmd(date, timeZone) {
   ].join("-");
 }
 
+function dateOnlyYmd(date) {
+  return [
+    String(date.getFullYear()).padStart(4, "0"),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function shiftYmd(ymd, days) {
+  const [year, month, day] = ymd.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  return [
+    String(shifted.getUTCFullYear()).padStart(4, "0"),
+    String(shifted.getUTCMonth() + 1).padStart(2, "0"),
+    String(shifted.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
 function localDateTime(date, timeZone) {
   const parts = partsAt(date, timeZone);
   return `${localYmd(date, timeZone)}T${[
@@ -76,16 +94,26 @@ function koreanDateLabel(date, timeZone) {
   return `${parts.year}년 ${parts.month}월 ${parts.day}일 (${weekday})`;
 }
 
+function koreanDateLabelFromYmd(ymd) {
+  const [year, month, day] = ymd.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const weekday = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "UTC",
+    weekday: "short",
+  }).format(date);
+  return `${year}년 ${month}월 ${day}일 (${weekday})`;
+}
+
 function displayFields(start, end, allDay, timeZone) {
   if (allDay) {
-    // RFC 5545 all-day DTEND is exclusive. Subtract 1ms to find the final
-    // displayed calendar day, so June 18 -> June 19 renders as June 18 only.
-    const inclusiveEnd = new Date(Math.max(start.getTime(), end.getTime() - 1));
-    const startDate = localYmd(start, timeZone);
-    const endDate = localYmd(inclusiveEnd, timeZone);
+    // node-ical creates VALUE=DATE values at midnight in the host timezone.
+    // Preserve those calendar components so Lambda UTC and local machines agree.
+    const startDate = dateOnlyYmd(start);
+    const endExclusive = dateOnlyYmd(end);
+    const endDate = end > start ? shiftYmd(endExclusive, -1) : startDate;
     const displayDate = startDate === endDate
-      ? koreanDateLabel(start, timeZone)
-      : `${koreanDateLabel(start, timeZone)} ~ ${koreanDateLabel(inclusiveEnd, timeZone)}`;
+      ? koreanDateLabelFromYmd(startDate)
+      : `${koreanDateLabelFromYmd(startDate)} ~ ${koreanDateLabelFromYmd(endDate)}`;
     return { displayDate, displayTime: "종일", displayText: `${displayDate} · 종일` };
   }
 
@@ -188,8 +216,8 @@ function mapEvent(event, fallbackUid, recurring = Boolean(event.rrule), timeZone
     title,
     start: start.toISOString(),
     end: end.toISOString(),
-    startLocal: allDay ? localYmd(start, timeZone) : localDateTime(start, timeZone),
-    endLocal: allDay ? localYmd(end, timeZone) : localDateTime(end, timeZone),
+    startLocal: allDay ? dateOnlyYmd(start) : localDateTime(start, timeZone),
+    endLocal: allDay ? dateOnlyYmd(end) : localDateTime(end, timeZone),
     timeZone,
     allDay,
     ...display,
