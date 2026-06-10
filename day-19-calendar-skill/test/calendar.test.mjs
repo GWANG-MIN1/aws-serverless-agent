@@ -28,6 +28,23 @@ SUMMARY:아침 체크인
 END:VEVENT
 END:VCALENDAR`;
 
+const DISPLAY_ICS = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Day19 Display Test//EN
+BEGIN:VEVENT
+UID:all-day@example.com
+DTSTART;VALUE=DATE:20260618
+DTEND;VALUE=DATE:20260619
+SUMMARY:랩 미팅
+END:VEVENT
+BEGIN:VEVENT
+UID:midnight@example.com
+DTSTART;TZID=Asia/Seoul:20260619T000000
+DTEND;TZID=Asia/Seoul:20260619T010000
+SUMMARY:운동
+END:VEVENT
+END:VCALENDAR`;
+
 test("normalizes webcal iCloud URLs and rejects arbitrary hosts", () => {
   assert.equal(
     normalizeCalendarUrl("webcal://p01-caldav.icloud.com/published/2/example"),
@@ -107,4 +124,38 @@ END:VCALENDAR`;
   assert.equal(result.sourceEventCount, 0);
   assert.equal(result.matchingEventCount, 0);
   assert.match(result.warning, /exact public calendar/);
+});
+
+test("preformats Korean weekdays, midnight times, and exclusive all-day ends", async () => {
+  const result = await listPublicCalendarEvents({
+    icsUrl: "https://p01-caldav.icloud.com/published/2/example",
+    from: "2026-06-18T00:00:00+09:00",
+    to: "2026-06-20T00:00:00+09:00",
+    timeZone: "Asia/Seoul",
+    fetchImpl: async () => new Response(DISPLAY_ICS, { status: 200 }),
+  });
+
+  assert.equal(result.count, 2);
+  assert.deepEqual(
+    result.events.map(({ title, displayDate, displayTime, displayText }) => ({
+      title,
+      displayDate,
+      displayTime,
+      displayText,
+    })),
+    [
+      {
+        title: "랩 미팅",
+        displayDate: "2026년 6월 18일 (목)",
+        displayTime: "종일",
+        displayText: "2026년 6월 18일 (목) · 종일",
+      },
+      {
+        title: "운동",
+        displayDate: "2026년 6월 19일 (금)",
+        displayTime: "00:00~01:00",
+        displayText: "2026년 6월 19일 (금) · 00:00~01:00",
+      },
+    ],
+  );
 });

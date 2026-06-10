@@ -59,6 +59,46 @@ function localDateTime(date, timeZone) {
   ].join(":")}`;
 }
 
+function localHm(date, timeZone) {
+  const parts = partsAt(date, timeZone);
+  return [
+    String(parts.hour).padStart(2, "0"),
+    String(parts.minute).padStart(2, "0"),
+  ].join(":");
+}
+
+function koreanDateLabel(date, timeZone) {
+  const parts = partsAt(date, timeZone);
+  const weekday = new Intl.DateTimeFormat("ko-KR", {
+    timeZone,
+    weekday: "short",
+  }).format(date);
+  return `${parts.year}년 ${parts.month}월 ${parts.day}일 (${weekday})`;
+}
+
+function displayFields(start, end, allDay, timeZone) {
+  if (allDay) {
+    // RFC 5545 all-day DTEND is exclusive. Subtract 1ms to find the final
+    // displayed calendar day, so June 18 -> June 19 renders as June 18 only.
+    const inclusiveEnd = new Date(Math.max(start.getTime(), end.getTime() - 1));
+    const startDate = localYmd(start, timeZone);
+    const endDate = localYmd(inclusiveEnd, timeZone);
+    const displayDate = startDate === endDate
+      ? koreanDateLabel(start, timeZone)
+      : `${koreanDateLabel(start, timeZone)} ~ ${koreanDateLabel(inclusiveEnd, timeZone)}`;
+    return { displayDate, displayTime: "종일", displayText: `${displayDate} · 종일` };
+  }
+
+  const sameDate = localYmd(start, timeZone) === localYmd(end, timeZone);
+  const displayDate = sameDate
+    ? koreanDateLabel(start, timeZone)
+    : `${koreanDateLabel(start, timeZone)} ~ ${koreanDateLabel(end, timeZone)}`;
+  const displayTime = sameDate
+    ? `${localHm(start, timeZone)}~${localHm(end, timeZone)}`
+    : `${localDateTime(start, timeZone)} ~ ${localDateTime(end, timeZone)}`;
+  return { displayDate, displayTime, displayText: `${displayDate} · ${displayTime}` };
+}
+
 function localMidnightUtc(year, month, day, timeZone) {
   const targetAsUtc = Date.UTC(year, month - 1, day);
   let guess = targetAsUtc;
@@ -141,6 +181,7 @@ function mapEvent(event, fallbackUid, recurring = Boolean(event.rrule), timeZone
   const start = event.start instanceof Date ? event.start : new Date(event.start);
   const end = event.end instanceof Date ? event.end : start;
   const allDay = Boolean(event.isFullDay ?? event.start?.dateOnly);
+  const display = displayFields(start, end, allDay, timeZone);
   return {
     uid: String(event.uid ?? fallbackUid),
     title: cleanText(event.summary, 500) ?? "(제목 없음)",
@@ -150,6 +191,7 @@ function mapEvent(event, fallbackUid, recurring = Boolean(event.rrule), timeZone
     endLocal: allDay ? localYmd(end, timeZone) : localDateTime(end, timeZone),
     timeZone,
     allDay,
+    ...display,
     location: cleanText(event.location, 500),
     description: cleanText(event.description, 2_000),
     recurring,
