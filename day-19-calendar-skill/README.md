@@ -149,13 +149,32 @@ $ics = curl.exe -sS -L --max-time 20 $url
 
 ## 꼭 찍을 스크린샷
 
-링크나 개인 일정은 가리고 아래 3장을 남긴다.
+링크나 개인 일정은 가리고 아래 화면을 남긴다.
 
-1. `images/01-calendar-source.png` — iPhone 캘린더의 검증용 일정 2개
-2. `images/02-calendar-skill-trace.png` — 웹 UI의 `tool_call` + `tool_result(skillCalls calendar ok:true)`
-3. `images/03-calendar-answer.png` — 최종 답이 실제 일정과 일치하는 화면
+1. `images/01-icloud-lab-meeting.png` — iPhone 캘린더의 6월 18일 종일 일정
+2. `images/02-icloud-workout.png` — iPhone 캘린더의 6월 19일 00:00~01:00 일정
+3. `images/03-discord-calendar-answer.png` — Discord 답변이 원본 일정과 일치하는 화면
 
-Discord까지 검증하면 `images/04-discord-calendar.png`도 추가한다. **공개 ICS URL은 어떤 스크린샷에도 나오면 안 된다.**
+**공개 ICS URL은 어떤 스크린샷에도 나오면 안 된다.**
+
+### 검증 결과
+
+| 원본 iCloud 일정 | Discord 답변 | 결과 |
+|---|---|---|
+| 2026년 6월 18일 (목), `랩 미팅`, 종일 | 6월 18일 (목), `랩 미팅`, 종일 | 일치 |
+| 2026년 6월 19일 (금), `운동`, 00:00~01:00 | 6월 19일 (금), `운동`, 00:00~01:00 | 일치 |
+
+#### iCloud 원본: 랩 미팅
+
+![iCloud 캘린더의 6월 18일 랩 미팅 종일 일정](images/01-icloud-lab-meeting.png)
+
+#### iCloud 원본: 운동
+
+![iCloud 캘린더의 6월 19일 운동 일정](images/02-icloud-workout.png)
+
+#### Discord 최종 답변
+
+![Discord에서 날짜와 시간이 정확히 표시된 캘린더 답변](images/03-discord-calendar-answer.png)
 
 ## 정리
 
