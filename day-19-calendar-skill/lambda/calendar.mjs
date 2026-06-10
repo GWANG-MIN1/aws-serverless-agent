@@ -41,6 +41,92 @@ function partsAt(date, timeZone) {
   return Object.fromEntries(parts.filter((p) => p.type !== "literal").map((p) => [p.type, Number(p.value)]));
 }
 
+function localYmd(date, timeZone) {
+  const parts = partsAt(date, timeZone);
+  return [
+    String(parts.year).padStart(4, "0"),
+    String(parts.month).padStart(2, "0"),
+    String(parts.day).padStart(2, "0"),
+  ].join("-");
+}
+
+function dateOnlyYmd(date) {
+  return [
+    String(date.getFullYear()).padStart(4, "0"),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function shiftYmd(ymd, days) {
+  const [year, month, day] = ymd.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  return [
+    String(shifted.getUTCFullYear()).padStart(4, "0"),
+    String(shifted.getUTCMonth() + 1).padStart(2, "0"),
+    String(shifted.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function localDateTime(date, timeZone) {
+  const parts = partsAt(date, timeZone);
+  return `${localYmd(date, timeZone)}T${[
+    String(parts.hour).padStart(2, "0"),
+    String(parts.minute).padStart(2, "0"),
+    String(parts.second).padStart(2, "0"),
+  ].join(":")}`;
+}
+
+function localHm(date, timeZone) {
+  const parts = partsAt(date, timeZone);
+  return [
+    String(parts.hour).padStart(2, "0"),
+    String(parts.minute).padStart(2, "0"),
+  ].join(":");
+}
+
+function koreanDateLabel(date, timeZone) {
+  const parts = partsAt(date, timeZone);
+  const weekday = new Intl.DateTimeFormat("ko-KR", {
+    timeZone,
+    weekday: "short",
+  }).format(date);
+  return `${parts.year}년 ${parts.month}월 ${parts.day}일 (${weekday})`;
+}
+
+function koreanDateLabelFromYmd(ymd) {
+  const [year, month, day] = ymd.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const weekday = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "UTC",
+    weekday: "short",
+  }).format(date);
+  return `${year}년 ${month}월 ${day}일 (${weekday})`;
+}
+
+function displayFields(start, end, allDay, timeZone) {
+  if (allDay) {
+    // node-ical creates VALUE=DATE values at midnight in the host timezone.
+    // Preserve those calendar components so Lambda UTC and local machines agree.
+    const startDate = dateOnlyYmd(start);
+    const endExclusive = dateOnlyYmd(end);
+    const endDate = end > start ? shiftYmd(endExclusive, -1) : startDate;
+    const displayDate = startDate === endDate
+      ? koreanDateLabelFromYmd(startDate)
+      : `${koreanDateLabelFromYmd(startDate)} ~ ${koreanDateLabelFromYmd(endDate)}`;
+    return { displayDate, displayTime: "종일", displayText: `${displayDate} · 종일` };
+  }
+
+  const sameDate = localYmd(start, timeZone) === localYmd(end, timeZone);
+  const displayDate = sameDate
+    ? koreanDateLabel(start, timeZone)
+    : `${koreanDateLabel(start, timeZone)} ~ ${koreanDateLabel(end, timeZone)}`;
+  const displayTime = sameDate
+    ? `${localHm(start, timeZone)}~${localHm(end, timeZone)}`
+    : `${localDateTime(start, timeZone)} ~ ${localDateTime(end, timeZone)}`;
+  return { displayDate, displayTime, displayText: `${displayDate} · ${displayTime}` };
+}
+
 function localMidnightUtc(year, month, day, timeZone) {
   const targetAsUtc = Date.UTC(year, month - 1, day);
   let guess = targetAsUtc;
@@ -119,27 +205,38 @@ function cleanText(value, maxLength) {
   return value.trim().slice(0, maxLength);
 }
 
-function mapEvent(event, fallbackUid, recurring = Boolean(event.rrule)) {
+function mapEvent(event, fallbackUid, recurring = Boolean(event.rrule), timeZone = "Asia/Seoul") {
   const start = event.start instanceof Date ? event.start : new Date(event.start);
   const end = event.end instanceof Date ? event.end : start;
+  const allDay = Boolean(event.isFullDay ?? event.start?.dateOnly);
+  const display = displayFields(start, end, allDay, timeZone);
+  const title = cleanText(event.summary, 500) ?? "(제목 없음)";
   return {
     uid: String(event.uid ?? fallbackUid),
-    title: cleanText(event.summary, 500) ?? "(제목 없음)",
+    title,
     start: start.toISOString(),
     end: end.toISOString(),
-    allDay: Boolean(event.isFullDay ?? event.start?.dateOnly),
+    startLocal: allDay ? dateOnlyYmd(start) : localDateTime(start, timeZone),
+    endLocal: allDay ? dateOnlyYmd(end) : localDateTime(end, timeZone),
+    timeZone,
+    allDay,
+    ...display,
+    answerLine: `${title} — ${display.displayText}`,
     location: cleanText(event.location, 500),
     description: cleanText(event.description, 2_000),
     recurring,
   };
 }
 
-export async function parseCalendarEvents(icsText, { from, to, limit = DEFAULT_LIMIT } = {}) {
+async function parseCalendarDocument(icsText, { from, to, limit = DEFAULT_LIMIT, timeZone = "Asia/Seoul" } = {}) {
   const parsed = await ical.async.parseICS(icsText);
   const events = [];
+  let sourceEventCount = 0;
+  const calendar = Object.values(parsed).find((component) => component?.type === "VCALENDAR");
 
   for (const [key, component] of Object.entries(parsed)) {
     if (component?.type !== "VEVENT" || !(component.start instanceof Date)) continue;
+    sourceEventCount += 1;
 
     if (component.rrule) {
       const instances = ical.expandRecurringEvent(component, {
@@ -152,7 +249,7 @@ export async function parseCalendarEvents(icsText, { from, to, limit = DEFAULT_L
       for (const instance of instances) {
         const end = instance.end instanceof Date ? instance.end : instance.start;
         if (overlaps(instance.start, end, from, to)) {
-          events.push(mapEvent(instance, `${key}#${instance.start.toISOString()}`, true));
+          events.push(mapEvent(instance, `${key}#${instance.start.toISOString()}`, true, timeZone));
         }
       }
       continue;
@@ -160,13 +257,21 @@ export async function parseCalendarEvents(icsText, { from, to, limit = DEFAULT_L
 
     const end = component.end instanceof Date ? component.end : component.start;
     if (overlaps(component.start, end, from, to)) {
-      events.push(mapEvent(component, key));
+      events.push(mapEvent(component, key, Boolean(component.rrule), timeZone));
     }
   }
 
-  return events
-    .sort((a, b) => a.start.localeCompare(b.start))
-    .slice(0, Math.min(Math.max(Number(limit) || DEFAULT_LIMIT, 1), MAX_LIMIT));
+  const sorted = events.sort((a, b) => a.start.localeCompare(b.start));
+  return {
+    calendarName: cleanText(calendar?.["WR-CALNAME"], 500),
+    sourceEventCount,
+    matchingEventCount: sorted.length,
+    events: sorted.slice(0, Math.min(Math.max(Number(limit) || DEFAULT_LIMIT, 1), MAX_LIMIT)),
+  };
+}
+
+export async function parseCalendarEvents(icsText, options = {}) {
+  return (await parseCalendarDocument(icsText, options)).events;
 }
 
 export async function listPublicCalendarEvents({
@@ -212,13 +317,25 @@ export async function listPublicCalendarEvents({
     const text = await response.text();
     if (Buffer.byteLength(text, "utf8") > MAX_ICS_BYTES) throw new Error("calendar file is too large");
 
-    const events = await parseCalendarEvents(text, { ...resolved, limit });
+    const document = await parseCalendarDocument(text, { ...resolved, limit, timeZone });
+    const warning = document.sourceEventCount === 0
+      ? "The configured public calendar feed contains no VEVENT entries. Check that events were saved to this exact public calendar."
+      : document.matchingEventCount === 0
+        ? "The public calendar contains events, but none overlap the requested range."
+        : undefined;
+
     return {
+      calendarName: document.calendarName,
       timeZone,
       from: resolved.from.toISOString(),
       to: resolved.to.toISOString(),
-      count: events.length,
-      events,
+      fromLocalDate: localYmd(resolved.from, timeZone),
+      toLocalDateExclusive: localYmd(resolved.to, timeZone),
+      sourceEventCount: document.sourceEventCount,
+      matchingEventCount: document.matchingEventCount,
+      count: document.events.length,
+      events: document.events,
+      warning,
     };
   } finally {
     clearTimeout(timer);

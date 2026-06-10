@@ -121,15 +121,60 @@ npm run deploy -- -c calendarIcsUrl="$env:CALENDAR_ICS_URL" -c calendarTimeZone=
 5. 캘린더에 없는 일정을 지어내지 않았는지 원본 iPhone 화면과 대조한다.
 6. 선택 검증: Discord `/ask`로 같은 질문을 보내 같은 일정이 나오는지 확인한다.
 
+### `등록된 일정이 없습니다`가 나올 때
+
+공개 링크가 가리키는 캘린더와 일정을 저장한 캘린더가 같은지 먼저 확인한다.
+
+1. iPhone 캘린더 앱에서 테스트 일정을 연다.
+2. **편집**을 누른다.
+3. 일정 상세의 **캘린더** 항목이 `Day 19 test`인지 확인한다.
+4. 다른 캘린더라면 `Day 19 test`로 변경하고 저장한다.
+5. iCloud 동기화를 위해 1~5분 기다린다.
+
+PowerShell에서 공개 피드에 들어간 일정 수를 직접 확인할 수 있다. 실제 URL은 출력되지 않는다.
+
+```powershell
+$url = $env:CALENDAR_ICS_URL -replace '^webcal://', 'https://'
+$ics = curl.exe -sS -L --max-time 20 $url
+($ics | Select-String '^BEGIN:VEVENT$').Count
+```
+
+테스트 일정 2개를 만들었다면 결과가 최소 `2`여야 한다. `0`이면 에이전트나 파서 문제가 아니라 iCloud 공개 피드가 비어 있는 상태다.
+
+계속 `0`이면:
+
+1. `Day 19 test` 정보 화면에서 **공개 캘린더**를 껐다가 다시 켠다.
+2. 새로 생성된 공유 링크를 복사한다. 기존 링크는 폐기될 수 있다.
+3. `$env:CALENDAR_ICS_URL`을 새 링크로 바꾸고 Day 19를 재배포한다.
+
 ## 꼭 찍을 스크린샷
 
-링크나 개인 일정은 가리고 아래 3장을 남긴다.
+링크나 개인 일정은 가리고 아래 화면을 남긴다.
 
-1. `images/01-calendar-source.png` — iPhone 캘린더의 검증용 일정 2개
-2. `images/02-calendar-skill-trace.png` — 웹 UI의 `tool_call` + `tool_result(skillCalls calendar ok:true)`
-3. `images/03-calendar-answer.png` — 최종 답이 실제 일정과 일치하는 화면
+1. `images/01-icloud-lab-meeting.png` — iPhone 캘린더의 6월 18일 종일 일정
+2. `images/02-icloud-workout.png` — iPhone 캘린더의 6월 19일 00:00~01:00 일정
+3. `images/03-discord-calendar-answer.png` — Discord 답변이 원본 일정과 일치하는 화면
 
-Discord까지 검증하면 `images/04-discord-calendar.png`도 추가한다. **공개 ICS URL은 어떤 스크린샷에도 나오면 안 된다.**
+**공개 ICS URL은 어떤 스크린샷에도 나오면 안 된다.**
+
+### 검증 결과
+
+| 원본 iCloud 일정 | Discord 답변 | 결과 |
+|---|---|---|
+| 2026년 6월 18일 (목), `랩 미팅`, 종일 | 6월 18일 (목), `랩 미팅`, 종일 | 일치 |
+| 2026년 6월 19일 (금), `운동`, 00:00~01:00 | 6월 19일 (금), `운동`, 00:00~01:00 | 일치 |
+
+#### iCloud 원본: 랩 미팅
+
+![iCloud 캘린더의 6월 18일 랩 미팅 종일 일정](images/01-icloud-lab-meeting.png)
+
+#### iCloud 원본: 운동
+
+![iCloud 캘린더의 6월 19일 운동 일정](images/02-icloud-workout.png)
+
+#### Discord 최종 답변
+
+![Discord에서 날짜와 시간이 정확히 표시된 캘린더 답변](images/03-discord-calendar-answer.png)
 
 ## 정리
 
@@ -158,3 +203,4 @@ npx cdk destroy --force
 | 61 | 일정 시간이 어긋남 | 시간대 설정 불일치 | `calendarTimeZone=Asia/Seoul` 확인 |
 | 62 | 반복 일정이 빠짐 | 단순 문자열 파싱 | `node-ical`의 recurrence expansion 사용 |
 | 63 | Lambda timeout | 캘린더 다운로드 지연/과대 파일 | fetch 8초, 파일 2MB, sandbox 15초 제한 확인 |
+| 64 | calendar 호출은 성공했지만 `count:0` | 일정이 공개한 캘린더가 아닌 다른 캘린더에 저장됨 | 일정 편집 → **캘린더**를 공개 캘린더로 변경, 공개 ICS의 `VEVENT` 수 확인 |
