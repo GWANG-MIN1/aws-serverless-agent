@@ -98,7 +98,9 @@ export class Day19CalendarSkillStack extends cdk.Stack {
       memorySize: 512,
       timeout: cdk.Duration.minutes(5),
       bundling: {
-        format: nodejs.OutputFormat.ESM,
+        // node-ical is CommonJS and loads node:fs dynamically. An ESM bundle
+        // cannot bridge that require at Lambda startup, so keep the Worker CJS.
+        format: nodejs.OutputFormat.CJS,
         target: 'node20',
         externalModules: [
           '@aws-sdk/client-bedrock-runtime',
