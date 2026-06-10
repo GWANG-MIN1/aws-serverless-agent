@@ -134,12 +134,15 @@ function mapEvent(event, fallbackUid, recurring = Boolean(event.rrule)) {
   };
 }
 
-export async function parseCalendarEvents(icsText, { from, to, limit = DEFAULT_LIMIT } = {}) {
+async function parseCalendarDocument(icsText, { from, to, limit = DEFAULT_LIMIT } = {}) {
   const parsed = await ical.async.parseICS(icsText);
   const events = [];
+  let sourceEventCount = 0;
+  const calendar = Object.values(parsed).find((component) => component?.type === "VCALENDAR");
 
   for (const [key, component] of Object.entries(parsed)) {
     if (component?.type !== "VEVENT" || !(component.start instanceof Date)) continue;
+    sourceEventCount += 1;
 
     if (component.rrule) {
       const instances = ical.expandRecurringEvent(component, {
@@ -164,9 +167,17 @@ export async function parseCalendarEvents(icsText, { from, to, limit = DEFAULT_L
     }
   }
 
-  return events
-    .sort((a, b) => a.start.localeCompare(b.start))
-    .slice(0, Math.min(Math.max(Number(limit) || DEFAULT_LIMIT, 1), MAX_LIMIT));
+  const sorted = events.sort((a, b) => a.start.localeCompare(b.start));
+  return {
+    calendarName: cleanText(calendar?.["WR-CALNAME"], 500),
+    sourceEventCount,
+    matchingEventCount: sorted.length,
+    events: sorted.slice(0, Math.min(Math.max(Number(limit) || DEFAULT_LIMIT, 1), MAX_LIMIT)),
+  };
+}
+
+export async function parseCalendarEvents(icsText, options = {}) {
+  return (await parseCalendarDocument(icsText, options)).events;
 }
 
 export async function listPublicCalendarEvents({
@@ -212,13 +223,23 @@ export async function listPublicCalendarEvents({
     const text = await response.text();
     if (Buffer.byteLength(text, "utf8") > MAX_ICS_BYTES) throw new Error("calendar file is too large");
 
-    const events = await parseCalendarEvents(text, { ...resolved, limit });
+    const document = await parseCalendarDocument(text, { ...resolved, limit });
+    const warning = document.sourceEventCount === 0
+      ? "The configured public calendar feed contains no VEVENT entries. Check that events were saved to this exact public calendar."
+      : document.matchingEventCount === 0
+        ? "The public calendar contains events, but none overlap the requested range."
+        : undefined;
+
     return {
+      calendarName: document.calendarName,
       timeZone,
       from: resolved.from.toISOString(),
       to: resolved.to.toISOString(),
-      count: events.length,
-      events,
+      sourceEventCount: document.sourceEventCount,
+      matchingEventCount: document.matchingEventCount,
+      count: document.events.length,
+      events: document.events,
+      warning,
     };
   } finally {
     clearTimeout(timer);

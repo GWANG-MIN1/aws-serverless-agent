@@ -60,6 +60,8 @@ test("fetches, expands recurring events, and returns sorted read-only data", asy
   });
 
   assert.equal(result.count, 4);
+  assert.equal(result.sourceEventCount, 2);
+  assert.equal(result.matchingEventCount, 4);
   assert.deepEqual(
     result.events.map((event) => event.title),
     ["아침 체크인", "아침 체크인", "팀 회의", "아침 체크인"],
@@ -67,6 +69,7 @@ test("fetches, expands recurring events, and returns sorted read-only data", asy
   assert.equal(result.events[0].start, "2026-06-08T00:00:00.000Z");
   assert.equal(result.events[0].recurring, true);
   assert.equal(result.events[2].location, "회의실 A");
+  assert.equal(result.warning, undefined);
 });
 
 test("rejects redirects that leave iCloud", async () => {
@@ -80,4 +83,23 @@ test("rejects redirects that leave iCloud", async () => {
     }),
     /https|iCloud/,
   );
+});
+
+test("distinguishes an empty public feed from an empty requested range", async () => {
+  const emptyFeed = `BEGIN:VCALENDAR
+VERSION:2.0
+X-WR-CALNAME:Day 19 test
+END:VCALENDAR`;
+  const result = await listPublicCalendarEvents({
+    icsUrl: "https://p01-caldav.icloud.com/published/2/example",
+    range: "this_week",
+    timeZone: "Asia/Seoul",
+    now: new Date("2026-06-10T13:00:00.000Z"),
+    fetchImpl: async () => new Response(emptyFeed, { status: 200 }),
+  });
+
+  assert.equal(result.calendarName, "Day 19 test");
+  assert.equal(result.sourceEventCount, 0);
+  assert.equal(result.matchingEventCount, 0);
+  assert.match(result.warning, /exact public calendar/);
 });
