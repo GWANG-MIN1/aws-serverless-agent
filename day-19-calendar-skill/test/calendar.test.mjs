@@ -137,11 +137,12 @@ test("preformats Korean weekdays, midnight times, and exclusive all-day ends", a
 
   assert.equal(result.count, 2);
   assert.deepEqual(
-    result.events.map(({ title, displayDate, displayTime, displayText }) => ({
+    result.events.map(({ title, displayDate, displayTime, displayText, answerLine }) => ({
       title,
       displayDate,
       displayTime,
       displayText,
+      answerLine,
     })),
     [
       {
@@ -149,12 +150,14 @@ test("preformats Korean weekdays, midnight times, and exclusive all-day ends", a
         displayDate: "2026년 6월 18일 (목)",
         displayTime: "종일",
         displayText: "2026년 6월 18일 (목) · 종일",
+        answerLine: "랩 미팅 — 2026년 6월 18일 (목) · 종일",
       },
       {
         title: "운동",
         displayDate: "2026년 6월 19일 (금)",
         displayTime: "00:00~01:00",
         displayText: "2026년 6월 19일 (금) · 00:00~01:00",
+        answerLine: "운동 — 2026년 6월 19일 (금) · 00:00~01:00",
       },
     ],
   );

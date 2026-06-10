@@ -182,9 +182,10 @@ function mapEvent(event, fallbackUid, recurring = Boolean(event.rrule), timeZone
   const end = event.end instanceof Date ? event.end : start;
   const allDay = Boolean(event.isFullDay ?? event.start?.dateOnly);
   const display = displayFields(start, end, allDay, timeZone);
+  const title = cleanText(event.summary, 500) ?? "(제목 없음)";
   return {
     uid: String(event.uid ?? fallbackUid),
-    title: cleanText(event.summary, 500) ?? "(제목 없음)",
+    title,
     start: start.toISOString(),
     end: end.toISOString(),
     startLocal: allDay ? localYmd(start, timeZone) : localDateTime(start, timeZone),
@@ -192,6 +193,7 @@ function mapEvent(event, fallbackUid, recurring = Boolean(event.rrule), timeZone
     timeZone,
     allDay,
     ...display,
+    answerLine: `${title} — ${display.displayText}`,
     location: cleanText(event.location, 500),
     description: cleanText(event.description, 2_000),
     recurring,
