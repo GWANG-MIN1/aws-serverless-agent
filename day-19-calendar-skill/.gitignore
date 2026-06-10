@@ -1,0 +1,21 @@
+*.js
+!jest.config.js
+*.d.ts
+node_modules
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+
+# 로컬 테스트 아티팩트 (curl payload / 출력)
+payload.json
+payload*.json
+out.json
+ddb-keys.json
+
+# 환경변수 / 시크릿 (혹시 모를 사고 방지)
+.env
+.env.*
+*.pem
+*.key
+*-credentials.json

@@ -153,7 +153,8 @@ Interactions 엔드포인트 → `/ask` → Agent Loop → followup PATCH** 전 
 
 | 숙제 | 어디서 |
 |---|---|
-| 관측성 — X-Ray로 Discord→Worker→Bedrock 추적 + 대시보드/알람/예산 | Day 19 |
+| iCloud 공개 ICS를 읽는 캘린더 skill | Day 19 |
+| 관측성 — X-Ray로 Discord→Worker→Bedrock 추적 + 대시보드/알람 | Day 20 |
 | Discord 스트리밍(중간 단계 followup 여러 번) / 컴포넌트 버튼 | 옵션 |
 | 멀티 채널 추상화(같은 Worker 가 web/discord/telegram 으로 송출) | 옵션 |
 
