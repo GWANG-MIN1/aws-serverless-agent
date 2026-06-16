@@ -65,7 +65,7 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 - [x] **Day 19**: 캘린더 skill — 아이폰(iCloud) 캘린더의 **공개 `.ics` 링크**를 읽어, 샌드박스에 `calendar()` skill 주입. "이번 주 일정 뭐 있어?" 에 실제 일정으로 답(읽기 전용, 애플 인증 불필요) → [`day-19-calendar-skill/`](./day-19-calendar-skill/)
 - [x] **Day 20**: 관측성/운영 — X-Ray 분산추적(api/worker/discord `Tracing.ACTIVE` + `captureAWSv3Client` 로 API→Worker→Bedrock/DDB subsegment) + CloudWatch 대시보드(호출/에러/p99+Bedrock) + Worker/API 에러 알람 → SNS. Lambda@Edge 는 X-Ray 미지원이라 제외. 비용은 Day 17 에서 다뤄 예산 항목 제외 → [`day-20-observability/`](./day-20-observability/)
 - [x] **Day 21**: CI/CD — GitHub Actions 가 **OIDC 역할**(`Day21PipelineStack`, 저장 키 0 · 신뢰는 이 레포로 한정 · 권한은 `sts:AssumeRole cdk-*` 최소)로 배포. 루트 `.github/workflows/` 가 push/PR 엔 `cdk synth`(검증), 수동 dispatch 에만 `cdk deploy` → [`day-21-cicd/`](./day-21-cicd/)
-- [ ] **Day 22 (캡스톤)**: 전체 회고 — 아키텍처 종합 다이어그램 + 트러블슈팅 #1~70 요약 + 비용/보안 정리. "프로젝트 완성" 마침표
+- [x] **Day 22 (캡스톤)**: 전체 회고 — 원본 레포 대비, 아키텍처 종합 다이어그램, 트러블슈팅 #1~77 요약, 비용/보안 정리. "프로젝트 완성" 마침표 → [`day-22-capstone/`](./day-22-capstone/)
 
 ---
 
@@ -90,7 +90,8 @@ aws-serverless-agent/
 ├── day-06-function-url/   # Phase 2 — Function URL + Bedrock streaming ✅
 ├── day-07-history-api/    # Phase 2 — Hono 멀티 라우트 + 히스토리 GET ✅
 ├── day-08-frontend-vite/  # Phase 2 — Vite React + S3 정적 호스팅 ✅
-└── ...
+├── ...
+└── day-22-capstone/       # Capstone — 전체 아키텍처/비용/보안/트러블슈팅 회고 ✅
 ```
 
 각 `day-XX-*/` 폴더는 독립 실행 가능한 CDK 프로젝트이며, 그날 배운 내용을 별도 README로 정리해둠. Day 9 이후 폴더는 위 "진행 상황" 섹션의 링크에서.
