@@ -95,7 +95,6 @@ npx cdk destroy --force   # Lambda@Edge 복제본 지연(Day 16 함정 #46) — 
 | 69 | 알람이 계속 `INSUFFICIENT_DATA` | 트래픽 없을 때 에러 지표가 빈값 | `treatMissingData: NOT_BREACHING` |
 | 70 | 알람 메일이 안 옴 | SNS 이메일 구독 미확인 | 확인 메일의 **Confirm** 링크 클릭 후에야 수신 |
 
-> 함정 1~58 Day 11~18, 59~64 Day 19. Day 20 부터 65~ 누적.
 
 ## 🧠 남긴 숙제 → 다음 day 들로
 
