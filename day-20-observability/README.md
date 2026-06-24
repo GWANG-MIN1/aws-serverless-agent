@@ -113,7 +113,11 @@ npx cdk destroy --force   # Lambda@Edge 복제본 지연(Day 16 함정 #46) — 
 | 68 | API 와 Worker 가 **따로** 추적됨 | async invoke 가 trace 를 안 이음 | API 의 `lambdaClient` 를 X-Ray 로 래핑 → invoke 가 subsegment 로 |
 | 69 | 알람이 계속 `INSUFFICIENT_DATA` | 트래픽 없을 때 에러 지표가 빈값 | `treatMissingData: NOT_BREACHING` |
 | 70 | 알람 메일이 안 옴 | SNS 이메일 구독 미확인 | 확인 메일의 **Confirm** 링크 클릭 후에야 수신 |
+| ⭐ 78 | **API(ESM 번들) 가 INIT 단계에서 크래시 → 전 요청 500** (`Dynamic require of "util" is not supported`) | `aws-xray-sdk-core`(→`cls-hooked`) 가 ESM 번들에서 동적 `require()` 호출 — esbuild ESM 출력엔 `require` 가 없어 **모듈 로드 시점에 폭발** | 번들 `banner` 로 `createRequire(import.meta.url)` 주입 → esbuild `__require` shim 이 전역 `require` 를 사용. (Worker 는 CJS 출력이라 무사) |
 
+> 함정 1~58 Day 11~18, 59~64 Day 19, 65~70 Day 20, 71~77 Day 21. **⭐ 78 = Day 20 스택을 새 환경에 재배포하다 뒤늦게 발견(번호는 누적 순).**
+
+> ⭐ **#78 상세** — Worker(CJS)는 X-Ray 래핑이 멀쩡한데 API만 죽었던 이유가 여기. esbuild 의 `__require` shim 은 *전역 `require` 가 있으면 그걸 쓰고, 없으면 throw* 한다. 그래서 `banner` 로 `import { createRequire } from "module"; const require = createRequire(import.meta.url);` 한 줄을 ESM 번들 최상단에 주입하면 동적 require 가 살아난다. ESM 유지 + CJS 전환 불필요.
 
 ## 🧠 남긴 숙제 → 다음 day 들로
 
