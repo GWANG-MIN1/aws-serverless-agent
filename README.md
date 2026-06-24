@@ -5,6 +5,30 @@
 
 AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레퍼런스를 분해해서 **부품 → 조립 → 고급 패턴** 순으로 직접 만들어보는 학습 프로젝트.
 
+## 🖼️ 데모
+
+### 🤖 Agent Loop — 실시간 tool-call 스트리밍
+모델이 `executeCode` 를 호출 → `node:vm` 샌드박스에서 실행 → 결과로 다음 단계를 결정하는 **에이전트 루프**.
+브라우저가 **IoT Core MQTT(WSS·SigV4)** 로 각 스텝(`tool_call` / `tool_result` / `text`)을 **폴링 없이** 실시간 구독한다.
+
+<table>
+  <tr>
+    <td width="50%"><img src="day-15-browser-mqtt/images/03-agent-loop-tool-calls.png" width="100%"></td>
+    <td width="50%"><img src="day-15-browser-mqtt/images/04-agent-loop-tool-calls.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="day-15-browser-mqtt/images/05-agent-loop-tool-calls.png" width="100%"></td>
+    <td width="50%"><img src="day-15-browser-mqtt/images/06-agent-loop-tool-calls.png" width="100%"></td>
+  </tr>
+</table>
+
+### 🔭 분산 추적 — X-Ray 서비스 맵
+요청 한 건이 **클라이언트 → API → Worker → Bedrock** 으로 전파되는 전 구간과 **DynamoDB·STS·IoT** 다운스트림까지 자동 계측. (`captureAWSv3Client` 래핑 + API→Worker invoke 연결)
+
+![X-Ray 서비스 맵](day-20-observability/images/01-xray-service-map.png)
+
+> 더 보기 — [Day 15 브라우저 MQTT](./day-15-browser-mqtt/) · [Day 20 관측성(대시보드·알람 포함)](./day-20-observability/)
+
 ## 🎯 학습 목표
 - AWS 서버리스 아키텍처 실전 적용 (Lambda, DynamoDB, Bedrock, IoT Core)
 - LLM 에이전트 시스템 설계 이해
