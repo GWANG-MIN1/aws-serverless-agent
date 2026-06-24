@@ -90,7 +90,6 @@ npx cdk destroy Day21PipelineStack --force  # 배포 역할/ OIDC provider (prov
 | 76 | 워크플로가 안 돎 | YAML 을 day 폴더 안에 둠 | **repo 루트 `.github/workflows/`** 에 둬야 인식 |
 | 77 | `Error: Credentials could not be loaded` | 워크플로에 `permissions: id-token: write` 누락 | OIDC 토큰 발급 권한 명시 |
 
-> 함정 1~64 Day 11~19, 65~70 Day 20. Day 21 부터 71~ 누적.
 
 ## 🧠 남긴 숙제 → 다음 day 들로
 
