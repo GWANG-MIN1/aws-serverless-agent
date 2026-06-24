@@ -78,6 +78,25 @@ curl.exe -s -X POST "$SITE/api/chat" -H "content-type: application/json" --data-
 
 > ⏱️ 지표/트레이스는 **1~3분 지연**해서 나타난다. 바로 안 보여도 잠시 기다리기.
 
+#### 실제 화면
+
+**X-Ray 서비스 맵** — `클라이언트 → API → Worker → Bedrock` + DynamoDB·STS·IoT 다운스트림까지 한 장에.
+
+![X-Ray 서비스 맵](./images/01-xray-service-map.png)
+
+**CloudWatch 대시보드** (`serverless-agent`) — Invocations / Errors / p99 Duration / Bedrock 지표.
+
+![CloudWatch 대시보드](./images/02-cloudwatch-dashboard.png)
+
+**알람 — 장애 라이프사이클** — 배포 직후 API 가 에러를 쏟자 `ApiErrorsAlarm` 이 임계(Errors≥1)를 넘어 **ALARM** 으로 전환됐다가, 수정 후 자동으로 **OK** 복귀. Worker 는 내내 정상.
+
+<table>
+  <tr>
+    <td width="50%"><img src="./images/03-alarm-api-errors-incident.png" width="100%"></td>
+    <td width="50%"><img src="./images/04-alarm-worker-ok.png" width="100%"></td>
+  </tr>
+</table>
+
 ### 4) 정리
 
 ```powershell
