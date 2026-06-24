@@ -194,6 +194,9 @@ export class Day20ObservabilityStack extends cdk.Stack {
       bundling: {
         format: nodejs.OutputFormat.ESM,
         target: 'node20',
+        // Day 20 fix: ESM 번들에서 aws-xray-sdk-core(→cls-hooked)의 동적 require("util") 지원.
+        //   esbuild __require shim 은 전역 require 가 있으면 그걸 쓴다 → createRequire 로 주입.
+        banner: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
         externalModules: [
           '@aws-sdk/client-dynamodb',
           '@aws-sdk/lib-dynamodb',
