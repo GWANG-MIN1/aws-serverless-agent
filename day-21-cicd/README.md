@@ -72,6 +72,25 @@ npx cdk deploy Day21PipelineStack
 **Actions 탭 → serverless-agent CI/CD → Run workflow** → `deploy` job 이:
 - OIDC 로 역할 assume(저장 키 0) → `cdk deploy Day21CicdStack` 성공하면 **키리스 배포 완료** ✅
 
+#### 🔍 검증 — "저장된 AWS 키 0개" 키리스 배포
+
+**① 워크플로 성공** — `synth`(검증) + `deploy`(OIDC 배포) 둘 다 초록.
+
+![Actions run green](./images/01-actions-run-green.png)
+
+**② OIDC 역할 assume** — `Configure AWS credentials` 스텝이 OIDC 토큰으로 역할을 빌린다(`Assuming role with OIDC`). 액세스 키 없음.
+
+![OIDC assume role](./images/02-oidc-assume-role.png)
+
+**③ 저장된 키 0개** — Secrets 탭엔 AWS 액세스 키가 하나도 없고(전통 방식이면 여기 키를 박았어야 함), Variables 엔 역할 ARN 하나뿐. ARN 은 자격증명이 아니라 식별자다.
+
+<table>
+  <tr>
+    <td width="50%"><img src="./images/03-secrets-no-aws-keys.png" width="100%"></td>
+    <td width="50%"><img src="./images/04-variables-role-arn.png" width="100%"></td>
+  </tr>
+</table>
+
 ### 5) 정리
 ```powershell
 npx cdk destroy Day21CicdStack --force      # 에이전트 스택 (Lambda@Edge 지연은 Day 16 #46)
