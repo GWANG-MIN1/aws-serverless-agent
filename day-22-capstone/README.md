@@ -30,40 +30,7 @@ Day 22 는 새 리소스를 더 만들지 않는다. 대신 지금까지 만든 
 
 ## 최종 아키텍처
 
-```mermaid
-flowchart LR
-  User["User / Browser"] --> CF["CloudFront"]
-  CF --> S3["S3 static site"]
-  CF --> Edge["Lambda@Edge origin-request"]
-  Edge --> SSM["SSM Parameter Store\nbackend Function URL"]
-  Edge --> API["API Lambda\nHono + Function URL"]
-
-  Discord["Discord /ask"] --> DiscordFn["Discord Lambda\nEd25519 verify"]
-  DiscordFn --> Worker
-
-  API --> Users["DDB Users"]
-  API --> Sessions["DDB Sessions"]
-  API --> Messages["DDB Messages"]
-  API --> Worker["Worker Lambda\nasync invoke"]
-
-  Worker --> Bedrock["Bedrock Converse\nClaude"]
-  Worker --> Sandbox["executeCode sandbox\nawsCost(), calendar(), read()"]
-  Sandbox --> CE["Cost Explorer"]
-  Sandbox --> ICS["iCloud public ICS"]
-  Worker --> Messages
-  Worker --> IoT["IoT Core MQTT\nsessions/{id}/events"]
-  IoT --> BrowserMqtt["Browser WSS subscribe\nSigV4 presigned URL"]
-  BrowserMqtt --> User
-
-  Worker --> XRay["X-Ray traces"]
-  API --> XRay
-  DiscordFn --> XRay
-  API --> CW["CloudWatch dashboard/alarms"]
-  Worker --> CW
-
-  GitHub["GitHub Actions"] --> OIDC["GitHub OIDC role\nsts:AssumeRole cdk-*"]
-  OIDC --> CDK["CDK synth/deploy"]
-```
+![최종 아키텍처](./images/01-architecture.png)
 
 ### 요청 라이프사이클
 
