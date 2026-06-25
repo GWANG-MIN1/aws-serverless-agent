@@ -17,8 +17,8 @@ Day 22 는 새 리소스를 더 만들지 않는다. 대신 지금까지 만든 
 
 | 원본 구성 | 역할 | 이 레포에서 대응한 day |
 |---|---|---|
-| `packages/backend` | Hono API Lambda, Worker Lambda, agent runtime, auth, repos, skills | Day 5~7, 11~14, 17~20 |
-| `packages/frontend` | Vite/React UI, realtime client, settings/skills UI | Day 8~9, 15~16 |
+| `packages/backend` | Hono API Lambda, Worker Lambda, agent runtime, auth, repos, skills | Day 5-7, 11-14, 17-20 |
+| `packages/frontend` | Vite/React UI, realtime client, settings/skills UI | Day 8-9, 15-16 |
 | `packages/edge` | CloudFront + Lambda@Edge + SSM 기반 origin rewrite | Day 9, Day 16 |
 | `packages/shared` | SSM/config/env 공통 유틸 | Day 16 에 SSM 패턴 차용 |
 | DynamoDB 7개 테이블 | users/sessions/profiles/memories/chat-sessions/chat-messages/user-skills | Day 12 에 3개 테이블로 핵심 축소 |
