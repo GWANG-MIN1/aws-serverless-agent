@@ -27,7 +27,17 @@ AWS 서버리스 인프라 위에서 동작하는 AI 에이전트를, 원본 레
 
 ![X-Ray 서비스 맵](day-20-observability/images/01-xray-service-map.png)
 
-> 더 보기 — [Day 15 브라우저 MQTT](./day-15-browser-mqtt/) · [Day 20 관측성(대시보드·알람 포함)](./day-20-observability/)
+### 🔐 키리스 CI/CD — GitHub Actions OIDC
+GitHub Actions가 **저장된 AWS 키 0개**로 배포한다. OIDC 토큰을 AWS가 검증해 역할을 잠깐 빌려주는 방식(`role-to-assume` 만, 액세스 키 입력 자체가 없음).
+
+<table>
+  <tr>
+    <td width="50%"><img src="day-21-cicd/images/01-actions-run-green.png" width="100%"></td>
+    <td width="50%"><img src="day-21-cicd/images/03-secrets-no-aws-keys.png" width="100%"></td>
+  </tr>
+</table>
+
+> 더 보기 — [Day 15 브라우저 MQTT](./day-15-browser-mqtt/) · [Day 20 관측성(대시보드·알람 포함)](./day-20-observability/) · [Day 21 키리스 CI/CD](./day-21-cicd/)
 
 ## 🎯 학습 목표
 - AWS 서버리스 아키텍처 실전 적용 (Lambda, DynamoDB, Bedrock, IoT Core)
