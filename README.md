@@ -39,6 +39,13 @@ GitHub Actions가 **저장된 AWS 키 0개**로 배포한다. OIDC 토큰을 AWS
 
 > 더 보기 — [Day 15 브라우저 MQTT](./day-15-browser-mqtt/) · [Day 20 관측성(대시보드·알람 포함)](./day-20-observability/) · [Day 21 키리스 CI/CD](./day-21-cicd/)
 
+## 🏗️ 아키텍처
+**Client/Edge → API/App Logic → Data/AI/Tools** 3계층 + **Observability/DevOps** 밴드. 브라우저는 CloudFront same-origin으로 정적 파일과 `/api` 를 함께 받고, Lambda@Edge 가 SSM의 backend URL로 라우팅한다. Worker 가 Bedrock Agent Loop를 돌리며 DynamoDB·IoT MQTT·X-Ray로 이어지고, GitHub Actions 가 OIDC로 키 없이 배포한다.
+
+![Architecture](day-22-capstone/images/01-architecture.png)
+
+> 전체 회고/요청 라이프사이클: [Day 22 캡스톤](./day-22-capstone/)
+
 ## 🎯 학습 목표
 - AWS 서버리스 아키텍처 실전 적용 (Lambda, DynamoDB, Bedrock, IoT Core)
 - LLM 에이전트 시스템 설계 이해
